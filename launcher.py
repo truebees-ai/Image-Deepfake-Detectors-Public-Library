@@ -1,21 +1,16 @@
 
 import os
 import subprocess
-import glob 
 import time
-import shutil
+import argparse
+import yaml
 
 
-def get_stdargs(detector):
-    stdargs = {
-        'R50_nodown' :  ' --arch res50nodown                            --norm_type resnet --resize_size 256 --resize_ratio 0.75 --resize_prob 0.2 --cmp_qual 30,100  --cmp_prob 0.5 --cropSize 96 --blur_sig 0.1,3.0 --blur_prob 0.5 --jitter_prob 0.8 --colordist_prob 0.2 --cutout_prob 0.2 --noise_prob 0.2',
-        'CLIP-D' :      ' --arch opencliplinearnext_clipL14commonpool   --norm_type clip   --resize_size 200 --resize_ratio 1    --resize_prob 0.2 --cmp_qual 65,100  --cmp_prob 0.5 --resizeSize 224', 
-        'R50_TF' :      ' --arch nodown                                 --prototype  --freeze',
-        'MISLNet' :     '',
-        'P2G' : '',
-        'NPR' : '',
-    }
-    return stdargs[detector]
+def load_config(config_path):
+    """Load configuration from YAML file."""
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
 
 # smi vampire function, busy waiting for a free-enough GPU, use min_vram to set the threshold
 def get_gpus():
@@ -38,149 +33,149 @@ def get_gpus():
 
     return free, memory
 
-def autotest(train_list, data_list):
+def autotest(train_list, data_list, detector_name):
+    """Generate task list from training and testing configurations."""
     assert type(data_list) == list
     task_list = []
-    for train in train_list:
-        task_list.append({'type':'train', 'details':train})
+    for train_config in train_list:
+        train_dict = {'detector': detector_name, 'model': None, 'data': train_config['data']}
+        task_list.append({'type':'train', 'details':train_dict})
         for data in data_list:
-            name = train['data']
-            task_list.append({'type':'test', 'details':{'detector': train['detector'], 'model': name, 'data': data}})
-
+            name = train_dict['data']
+            task_list.append({'type':'test', 'details':{'detector': detector_name, 'model': name, 'data': data}})
     return task_list
 
-## TB_fixed
-# LOCUTUS
-# dataset_path = os.path.join(os.sep, 'media', 'mmlab', 'Volume2', 'TrueFake')
-# device_override = 'cuda:0'
-dataset_path = os.path.join(os.sep, 'media', 'mmlab', 'Datasets_4TB', 'TrueFake')
-device_override = 'cuda:1'
 
-# HAL
-# dataset_path = os.path.join(os.sep, 'home', 'stefano.dellanna', 'TrueFake')
-# device_override = 'cuda:0'
-
-split_file = os.path.abspath('split.json')
-
-os.makedirs('logs', exist_ok=True)
-
-# only list the training/testing to perform
-only_list = False
-dry_run = False
-
-# # specify the phases to run {train, test}
-# phases = ['test']
-phases = ['train', 'test']
-
-min_vram = 16000
-
-# device_override = 'cuda:1' # if None, the launcher will automatically select the first available GPU
-# device_override = None # if None, the launcher will automatically select the first available GPU
-
-tasks = []
-
-# data = 'gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre'
-# data = 'gan2:pre&realFFHQ:pre'
-# data = 'sdXL:pre&realFORLAB:pre'
-
-train = [
-        # {'detector': 'R50_nodown',      'model': None,     'data': data},
-        # {'detector': 'CLIP-D',          'model': None,     'data': data},
-        # {'detector': 'MISLNet',         'model': None,     'data': data},
-        # {'detector': 'R50_TF',          'model': None,     'data': data},
-        # {'detector': 'P2G',             'model': None,     'data': data},
-        # {'detector': 'NPR',             'model': None,     'data': data},
-        ]
-
-train = [
-        # {'detector': 'R50_TF',          'model': None,     'data': 'sdXL:pre&realFORLAB:pre'},
-        # {'detector': 'R50_TF',          'model': None,     'data': 'gan2:pre&realFFHQ:pre'},
-        {'detector': 'R50_TF',          'model': None,     'data': 'gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre'},
-        # {'detector': 'R50_nodown',          'model': None,     'data': 'gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre'},
-        ]
-
-test_list = [
-            'realFFHQ:fb',  'realFORLAB:fb',  'gan1:fb',  'gan2:fb',  'gan3:fb',  'sd15:fb',  'sd2:fb',   'sd3:fb',   'sdXL:fb',  'flux:fb',
-            'realFFHQ:tl',  'realFORLAB:tl',  'gan1:tl',  'gan2:tl',  'gan3:tl',  'sd15:tl',  'sd2:tl',   'sd3:tl',   'sdXL:tl',  'flux:tl',
-            'realFFHQ:tw',  'realFORLAB:tw',  'gan1:tw',  'gan2:tw',  'gan3:tw',  'sd15:tw',  'sd2:tw',   'sd3:tw',   'sdXL:tw',  'flux:tw',
-            'realFFHQ:pre', 'realFORLAB:pre', 'gan1:pre', 'gan2:pre', 'gan3:pre', 'sd15:pre', 'sd2:pre',  'sd3:pre',  'sdXL:pre', 'flux:pre',
-            ]
-
-# test_list = ['realFORLAB:fb', 'realFORLAB:tl', 'realFORLAB:tw']
-
-tasks.extend(autotest(train, test_list))
-
-
-# # phase filter
-# tasks = [task for task in tasks if task['type'] in phases]
-
-print('Number of tasks:', len(tasks))
-for task in tasks:
-    print(task)
-
-if only_list:
-    quit()
-
-# from here the launcher will create all the arguments to use when calling the train script
-for task in tasks:
-
-    if task['type'] not in phases:
-        continue
-    args = []
-    if task['type'] == 'train':
-        args.append(f'--name "{task["details"]["data"]}_freeze_down"')
-        # args.append(f'--name "{task["details"]["data"]}"')
+def parse_phases(phases_str):
+    """Parse phases string into list."""
+    if phases_str.lower() == 'both':
+        return ['train', 'test']
+    elif phases_str.lower() == 'train':
+        return ['train']
+    elif phases_str.lower() == 'test':
+        return ['test']
     else:
-        args.append(f'--name "{task["details"]["model"]}_freeze_down"')
-        # args.append(f'--name "{task["details"]["model"]}"')
+        raise ValueError(f"Invalid phases: {phases_str}. Must be 'train', 'test', or 'both'")
 
-    args.append(f'--split_file {split_file}')
-    args.append(f'--task {task["type"]}')
-    args.append(f'--num_threads {8}')
-    args.append(f'--data_keys "{task["details"]["data"]}"')
-    args.append(f'--data_root {dataset_path}')
-    # args.append(f'--num_epoches {5}')
 
-    device = None
-    if not device_override is None:
-        device = device_override
-    else:
-        if not dry_run:
-            print('Waiting for GPU')
-            while(device == None):
-                free, memory = get_gpus()
-                if len(free):
-                    device = "cuda:"+free[0]
-                elif max(memory) > min_vram:
-                    device = "cuda:" + str([i for i, mem in enumerate(memory) if mem == max(memory)][0])
-                time.sleep(1)
-            print('GPU found')
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Launcher for deepfake detector training and testing')
+    parser.add_argument('--detector', type=str, required=True,
+                        choices=['R50_TF', 'R50_nodown', 'CLIP-D', 'MISLNet', 'P2G', 'NPR'],
+                        help='Detector to use')
+    parser.add_argument('--phases', type=str, default='both',
+                        choices=['train', 'test', 'both'],
+                        help='Phases to run: train, test, or both (default: both)')
+    parser.add_argument('--config-dir', type=str, default='configs',
+                        help='Path to configs directory (default: configs/)')
     
-    args.append(f'--device {device}')
-    args = ' '.join(args + get_stdargs(task["details"]["detector"]).split()) 
+    args = parser.parse_args()
+    
+    # Load configuration from YAML
+    config_path = os.path.join(args.config_dir, f'{args.detector}.yaml')
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    
+    config = load_config(config_path)
+    
+    # Extract configuration values
+    global_config = config.get('global', {})
+    dataset_path = global_config.get('dataset_path')
+    device_override = global_config.get('device_override')  # Can be None
+    # Handle string "null" as None
+    if device_override == "null" or device_override == "":
+        device_override = None
+    min_vram = global_config.get('min_vram', 16000)
+    split_file = os.path.abspath(global_config.get('split_file', 'split.json'))
+    num_threads = global_config.get('num_threads', 8)
+    dry_run = global_config.get('dry_run', False)
+    only_list = global_config.get('only_list', False)
+    
+    phases = parse_phases(args.phases)
+    
+    detector_args = config.get('detector_args', [])
+    training_configs = config.get('training', [])
+    test_list = config.get('testing', [])
+    
+    os.makedirs('logs', exist_ok=True)
+    
+    # Generate tasks
+    tasks = []
+    if training_configs:
+        tasks.extend(autotest(training_configs, test_list, args.detector))
+    
+    print('Number of tasks:', len(tasks))
+    for task in tasks:
+        print(task)
+    
+    if only_list:
+        return
+    
+    # From here the launcher will create all the arguments to use when calling the train script
+    for task in tasks:
+        if task['type'] not in phases:
+            continue
+        
+        cmd_args = []
+        if task['type'] == 'train':
+            cmd_args.append(f'--name "{task["details"]["data"]}_freeze_down"')
+        else:
+            cmd_args.append(f'--name "{task["details"]["model"]}_freeze_down"')
+        
+        cmd_args.append(f'--split_file {split_file}')
+        cmd_args.append(f'--task {task["type"]}')
+        cmd_args.append(f'--num_threads {num_threads}')
+        cmd_args.append(f'--data_keys "{task["details"]["data"]}"')
+        cmd_args.append(f'--data_root {dataset_path}')
+        
+        device = None
+        if device_override is not None:
+            device = device_override
+        else:
+            if not dry_run:
+                print('Waiting for GPU')
+                while device is None:
+                    free, memory = get_gpus()
+                    if len(free):
+                        device = "cuda:" + free[0]
+                    elif max(memory) > min_vram:
+                        device = "cuda:" + str([i for i, mem in enumerate(memory) if mem == max(memory)][0])
+                    time.sleep(1)
+                print('GPU found')
+        
+        cmd_args.append(f'--device {device}')
+        
+        # Add detector-specific arguments
+        for arg in detector_args:
+            cmd_args.append(arg)
+        
+        cmd_args_str = ' '.join(cmd_args)
+        
+        # Call train.py or test.py
+        if not dry_run:
+            log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{task["details"]["model"]}_{task["details"]["data"]}.log'
+            with open(log_file, 'w') as f:
+                cwd = os.getcwd()
+                os.chdir(f'./detectors/{task["details"]["detector"]}')
+                
+                start_time = time.time()
+                
+                runner = f'{task["type"]}.py'
+                print(f'Call to {runner} with: {cmd_args_str}')
+                subprocess.run(f'python -u {runner} {cmd_args_str}', shell=True, stdout=f, stderr=f)
+                
+                end_time = time.time()
+                print(f'Execution time: {end_time-start_time:.2f} seconds')
+                
+                print('#'*80)
+                print('#'*80)
+                
+                os.chdir(cwd)
 
-    # call to train.py
-    if not dry_run:
-        log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{task["details"]["model"]}_{task["details"]["data"]}.log'
-        with open(log_file, 'w') as f:
-            cwd = os.getcwd()
-            os.chdir(f'./detectors/{task["details"]["detector"]}')
 
-            start_time = time.time()
-
-            runner = f'{task["type"]}.py'   
-            print(f'Call to {runner} with: {args}')
-            # subprocess.run(f'python -u {runner} {args}', shell=True)
-            subprocess.run(f'python -u {runner} {args}', shell=True, stdout=f, stderr=f)
-
-            end_time = time.time()
-            print(f'Execution time: {end_time-start_time:.2f} seconds')
-
-            print('#'*80)
-            print('#'*80)
-            # subprocess.run(f'python -u {task["type"]}.py {args}', shell=True)
-
-            os.chdir(cwd)
+if __name__ == '__main__':
+    main()
 
 
 
