@@ -1,0 +1,56 @@
+\begin{table}[]
+\caption{PreSocial, trained on gan2:pre\&sdXL:pre\&realFFHQ:pre\&realFORLAB:pre}
+\begin{tblr}{X[1,l,m]X[1,c,m]X[1,c,m]X[1,c,m]X[1,c,m]X[1,c,m]X[1,c,m]}
+Dataset & Ours & R50\_ND & MISLNet & NPR & CLIP-D & P2G \\ \hline \hline 
+FFHQ & 0.96 & 1.00 & 0.99 & 1.00 & 0.95 & 0.99 \\ \hline 
+FORLAB & 0.99 & 1.00 & 0.97 & 0.98 & 0.98 & 1.00 \\ \hline 
+SG & 0.98 & 0.94 & 0.59 & 0.54 & 0.99 & 0.92 \\ \hline 
+SG2 & 0.99 & 1.00 & 1.00 & 1.00 & 0.94 & 0.93 \\ \hline 
+SG3 & 0.59 & 0.00 & 0.00 & 0.02 & 0.96 & 0.82 \\ \hline 
+SD1.5 & 0.91 & 0.99 & 0.72 & 0.43 & 0.88 & 0.88 \\ \hline 
+SD2.1 & 0.78 & 0.78 & 0.37 & 0.41 & 0.85 & 0.90 \\ \hline 
+SD3 & 0.63 & 0.64 & 0.32 & 0.55 & 0.84 & 0.87 \\ \hline 
+SDXL & 0.99 & 1.00 & 0.99 & 1.00 & 1.00 & 1.00 \\ \hline 
+FLUX.1 & 0.92 & 0.94 & 0.86 & 0.86 & 0.98 & 0.93 \\ \hline 
+\end{tblr}
+\label{tab:dataset}
+\end{table}
+
+\begin{table}[]
+\caption{Deltas, trained on gan2:pre\&sdXL:pre\&realFFHQ:pre\&realFORLAB:pre}
+\begin{tblr}{rows = {abovesep=1pt,belowsep=1pt}, colsep = 2pt, colspec = {X[1,l,m]X[-1,l,m]X[1,c,m]X[1,c,m]X[1,c,m]X[1,c,m]X[1,c,m]X[1,c,m]}}
+\SetCell[c=2]{c} Data & & Ours & R50-ND & MISLNet & NPR & CLIP-D & P2G \\ \hline \hline 
+\SetCell[r=3]{r} \footnotesize FFHQ & \tiny FB & \scriptsize \textcolor{red}{0.74 \tiny -0.22} & \scriptsize \textcolor{black}{0.96 \tiny -0.04} & \scriptsize \textcolor{red}{0.41 \tiny -0.58} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{red}{0.79 \tiny -0.16} & \scriptsize \textcolor{black}{1.00 \tiny +0.01} \\ 
+ & \tiny TL & \scriptsize \textcolor{black}{0.95 \tiny -0.01} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{red}{0.79 \tiny -0.20} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.93 \tiny -0.02} & \scriptsize \textcolor{black}{1.00 \tiny +0.01} \\ 
+ & \tiny TW & \scriptsize \textcolor{black}{0.98 \tiny +0.02} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{red}{0.70 \tiny -0.29} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.93 \tiny -0.02} & \scriptsize \textcolor{black}{1.00 \tiny +0.01} \\ \hline 
+\SetCell[r=3]{r} \footnotesize FORLAB & \tiny FB & \scriptsize \textcolor{red}{0.90 \tiny -0.09} & \scriptsize \textcolor{red}{0.89 \tiny -0.11} & \scriptsize \textcolor{red}{0.43 \tiny -0.54} & \scriptsize \textcolor{black}{1.00 \tiny +0.02} & \scriptsize \textcolor{black}{0.99 \tiny +0.01} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.93 \tiny -0.06} & \scriptsize \textcolor{black}{0.97 \tiny -0.03} & \scriptsize \textcolor{red}{0.55 \tiny -0.42} & \scriptsize \textcolor{black}{1.00 \tiny +0.02} & \scriptsize \textcolor{black}{0.99 \tiny +0.01} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} \\ 
+ & \tiny TW & \scriptsize \textcolor{black}{0.98 \tiny -0.01} & \scriptsize \textcolor{black}{0.98 \tiny -0.02} & \scriptsize \textcolor{red}{0.78 \tiny -0.19} & \scriptsize \textcolor{black}{1.00 \tiny +0.02} & \scriptsize \textcolor{black}{0.99 \tiny +0.01} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} \\ \hline 
+\SetCell[r=3]{r} \footnotesize SG & \tiny FB & \scriptsize \textcolor{red}{0.69 \tiny -0.29} & \scriptsize \textcolor{black}{0.96 \tiny +0.02} & \scriptsize \textcolor{blue}{0.79 \tiny +0.20} & \scriptsize \textcolor{red}{0.00 \tiny -0.54} & \scriptsize \textcolor{black}{0.98 \tiny -0.01} & \scriptsize \textcolor{red}{0.11 \tiny -0.81} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.46 \tiny -0.52} & \scriptsize \textcolor{red}{0.64 \tiny -0.30} & \scriptsize \textcolor{red}{0.20 \tiny -0.39} & \scriptsize \textcolor{red}{0.00 \tiny -0.54} & \scriptsize \textcolor{black}{0.98 \tiny -0.01} & \scriptsize \textcolor{red}{0.17 \tiny -0.75} \\ 
+ & \tiny TW & \scriptsize \textcolor{red}{0.46 \tiny -0.52} & \scriptsize \textcolor{black}{0.93 \tiny -0.01} & \scriptsize \textcolor{black}{0.61 \tiny +0.02} & \scriptsize \textcolor{red}{0.00 \tiny -0.54} & \scriptsize \textcolor{black}{0.98 \tiny -0.01} & \scriptsize \textcolor{red}{0.31 \tiny -0.61} \\ \hline 
+\SetCell[r=3]{r} \footnotesize SG2 & \tiny FB & \scriptsize \textcolor{red}{0.66 \tiny -0.33} & \scriptsize \textcolor{red}{0.85 \tiny -0.15} & \scriptsize \textcolor{red}{0.72 \tiny -0.28} & \scriptsize \textcolor{red}{0.00 \tiny -1.00} & \scriptsize \textcolor{red}{0.80 \tiny -0.14} & \scriptsize \textcolor{red}{0.02 \tiny -0.91} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.48 \tiny -0.51} & \scriptsize \textcolor{red}{0.93 \tiny -0.07} & \scriptsize \textcolor{red}{0.69 \tiny -0.31} & \scriptsize \textcolor{red}{0.01 \tiny -0.99} & \scriptsize \textcolor{red}{0.88 \tiny -0.06} & \scriptsize \textcolor{red}{0.07 \tiny -0.86} \\ 
+ & \tiny TW & \scriptsize \textcolor{red}{0.48 \tiny -0.51} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.98 \tiny -0.02} & \scriptsize \textcolor{red}{0.04 \tiny -0.96} & \scriptsize \textcolor{black}{0.91 \tiny -0.03} & \scriptsize \textcolor{red}{0.17 \tiny -0.76} \\ \hline 
+\SetCell[r=3]{r} \footnotesize SG3 & \tiny FB & \scriptsize \textcolor{black}{0.61 \tiny +0.02} & \scriptsize \textcolor{blue}{0.46 \tiny +0.46} & \scriptsize \textcolor{blue}{0.78 \tiny +0.78} & \scriptsize \textcolor{black}{0.00 \tiny -0.02} & \scriptsize \textcolor{black}{0.96 \tiny +0.00} & \scriptsize \textcolor{red}{0.01 \tiny -0.81} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.14 \tiny -0.45} & \scriptsize \textcolor{black}{0.00 \tiny +0.00} & \scriptsize \textcolor{blue}{0.25 \tiny +0.25} & \scriptsize \textcolor{black}{0.00 \tiny -0.02} & \scriptsize \textcolor{black}{0.93 \tiny -0.03} & \scriptsize \textcolor{red}{0.02 \tiny -0.80} \\ 
+ & \tiny TW & \scriptsize \textcolor{red}{0.08 \tiny -0.51} & \scriptsize \textcolor{black}{0.01 \tiny +0.01} & \scriptsize \textcolor{blue}{0.53 \tiny +0.53} & \scriptsize \textcolor{black}{0.00 \tiny -0.02} & \scriptsize \textcolor{black}{0.97 \tiny +0.01} & \scriptsize \textcolor{red}{0.06 \tiny -0.76} \\ \hline 
+\SetCell[r=3]{r} \footnotesize SD1.5 & \tiny FB & \scriptsize \textcolor{red}{0.83 \tiny -0.08} & \scriptsize \textcolor{black}{0.97 \tiny -0.02} & \scriptsize \textcolor{black}{0.69 \tiny -0.03} & \scriptsize \textcolor{red}{0.08 \tiny -0.35} & \scriptsize \textcolor{black}{0.86 \tiny -0.02} & \scriptsize \textcolor{red}{0.77 \tiny -0.11} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.84 \tiny -0.07} & \scriptsize \textcolor{black}{0.96 \tiny -0.03} & \scriptsize \textcolor{black}{0.74 \tiny +0.02} & \scriptsize \textcolor{red}{0.06 \tiny -0.37} & \scriptsize \textcolor{black}{0.90 \tiny +0.02} & \scriptsize \textcolor{red}{0.78 \tiny -0.10} \\ 
+ & \tiny TW & \scriptsize \textcolor{black}{0.91 \tiny +0.00} & \scriptsize \textcolor{black}{0.99 \tiny +0.00} & \scriptsize \textcolor{black}{0.71 \tiny -0.01} & \scriptsize \textcolor{black}{0.43 \tiny +0.00} & \scriptsize \textcolor{black}{0.87 \tiny -0.01} & \scriptsize \textcolor{black}{0.88 \tiny +0.00} \\ \hline 
+\SetCell[r=3]{r} \footnotesize SD2.1 & \tiny FB & \scriptsize \textcolor{red}{0.67 \tiny -0.11} & \scriptsize \textcolor{red}{0.61 \tiny -0.17} & \scriptsize \textcolor{blue}{0.43 \tiny +0.06} & \scriptsize \textcolor{red}{0.11 \tiny -0.30} & \scriptsize \textcolor{red}{0.77 \tiny -0.08} & \scriptsize \textcolor{red}{0.80 \tiny -0.10} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.66 \tiny -0.12} & \scriptsize \textcolor{red}{0.59 \tiny -0.19} & \scriptsize \textcolor{blue}{0.44 \tiny +0.07} & \scriptsize \textcolor{red}{0.11 \tiny -0.30} & \scriptsize \textcolor{black}{0.83 \tiny -0.02} & \scriptsize \textcolor{red}{0.81 \tiny -0.09} \\ 
+ & \tiny TW & \scriptsize \textcolor{black}{0.78 \tiny +0.00} & \scriptsize \textcolor{black}{0.78 \tiny +0.00} & \scriptsize \textcolor{black}{0.39 \tiny +0.02} & \scriptsize \textcolor{black}{0.42 \tiny +0.01} & \scriptsize \textcolor{black}{0.83 \tiny -0.02} & \scriptsize \textcolor{black}{0.90 \tiny +0.00} \\ \hline 
+\SetCell[r=3]{r} \footnotesize SD3 & \tiny FB & \scriptsize \textcolor{red}{0.57 \tiny -0.06} & \scriptsize \textcolor{black}{0.67 \tiny +0.03} & \scriptsize \textcolor{blue}{0.80 \tiny +0.48} & \scriptsize \textcolor{red}{0.04 \tiny -0.51} & \scriptsize \textcolor{red}{0.76 \tiny -0.08} & \scriptsize \textcolor{red}{0.78 \tiny -0.09} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.54 \tiny -0.09} & \scriptsize \textcolor{red}{0.55 \tiny -0.09} & \scriptsize \textcolor{blue}{0.74 \tiny +0.42} & \scriptsize \textcolor{red}{0.06 \tiny -0.49} & \scriptsize \textcolor{black}{0.82 \tiny -0.02} & \scriptsize \textcolor{red}{0.77 \tiny -0.10} \\ 
+ & \tiny TW & \scriptsize \textcolor{red}{0.38 \tiny -0.25} & \scriptsize \textcolor{red}{0.51 \tiny -0.13} & \scriptsize \textcolor{blue}{0.56 \tiny +0.24} & \scriptsize \textcolor{red}{0.12 \tiny -0.43} & \scriptsize \textcolor{black}{0.84 \tiny +0.00} & \scriptsize \textcolor{red}{0.77 \tiny -0.10} \\ \hline 
+\SetCell[r=3]{r} \footnotesize SDXL & \tiny FB & \scriptsize \textcolor{black}{0.96 \tiny -0.03} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.97 \tiny -0.02} & \scriptsize \textcolor{red}{0.21 \tiny -0.79} & \scriptsize \textcolor{black}{0.98 \tiny -0.02} & \scriptsize \textcolor{black}{0.97 \tiny -0.03} \\ 
+ & \tiny TL & \scriptsize \textcolor{black}{0.96 \tiny -0.03} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.98 \tiny -0.01} & \scriptsize \textcolor{red}{0.32 \tiny -0.68} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.96 \tiny -0.04} \\ 
+ & \tiny TW & \scriptsize \textcolor{black}{0.95 \tiny -0.04} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.98 \tiny -0.01} & \scriptsize \textcolor{red}{0.62 \tiny -0.38} & \scriptsize \textcolor{black}{1.00 \tiny +0.00} & \scriptsize \textcolor{black}{0.98 \tiny -0.02} \\ \hline 
+\SetCell[r=3]{r} \footnotesize FLUX.1 & \tiny FB & \scriptsize \textcolor{red}{0.81 \tiny -0.11} & \scriptsize \textcolor{black}{0.94 \tiny +0.00} & \scriptsize \textcolor{blue}{0.93 \tiny +0.07} & \scriptsize \textcolor{red}{0.03 \tiny -0.83} & \scriptsize \textcolor{red}{0.91 \tiny -0.07} & \scriptsize \textcolor{red}{0.82 \tiny -0.11} \\ 
+ & \tiny TL & \scriptsize \textcolor{red}{0.85 \tiny -0.07} & \scriptsize \textcolor{black}{0.92 \tiny -0.02} & \scriptsize \textcolor{blue}{0.94 \tiny +0.08} & \scriptsize \textcolor{red}{0.05 \tiny -0.81} & \scriptsize \textcolor{black}{0.98 \tiny +0.00} & \scriptsize \textcolor{red}{0.80 \tiny -0.13} \\ 
+ & \tiny TW & \scriptsize \textcolor{red}{0.80 \tiny -0.12} & \scriptsize \textcolor{black}{0.94 \tiny +0.00} & \scriptsize \textcolor{blue}{0.95 \tiny +0.09} & \scriptsize \textcolor{red}{0.18 \tiny -0.68} & \scriptsize \textcolor{black}{0.98 \tiny +0.00} & \scriptsize \textcolor{red}{0.81 \tiny -0.12} \\ \hline 
+\end{tblr}
+\label{tab:dataset}
+\end{table}
+
