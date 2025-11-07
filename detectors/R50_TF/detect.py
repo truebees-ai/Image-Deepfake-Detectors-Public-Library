@@ -11,6 +11,12 @@ from PIL import Image
 import torchvision.transforms.v2 as Tv2
 
 from networks import ImageClassifier
+import sys
+# Add project root to path for imports (allow importing support utilities)
+# repo root: go up three levels from detectors/R50_TF/detect.py -> project root
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
+from support.detect_utils import format_result, save_result, get_device
 
 
 # ----------------------------------------------------------------------------
@@ -142,13 +148,47 @@ def run_inference(model, image_path, device):
 # ----------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description='Single image inference for R50_TF detector')
-    parser.add_argument('--input', type=str, required=True, help='Path to input image')
+    # Backwards-compatible flags: accept both --input/--checkpoint (original) and
+    # the standardized --image/--model used by the launcher support wrapper.
+    parser.add_argument('--input', type=str, required=False, help='Path to input image (alias: --image)')
+    parser.add_argument('--image', type=str, required=False, help='Path to input image (alias for --input)')
     parser.add_argument('--output', type=str, default='/tmp/result.json', help='Path to output JSON file')
-    parser.add_argument('--checkpoint', type=str, required=True, help='Path to model checkpoint file')
+    parser.add_argument('--checkpoint', type=str, required=False, help='Path to model checkpoint file')
+    parser.add_argument('--model', type=str, required=False, help='Model name or checkpoint directory (alias for --checkpoint)')
     parser.add_argument('--config', type=str, default='configs/R50_TF.yaml', help='Path to YAML config file')
     parser.add_argument('--device', type=str, default='cuda:0', help='Device to use (cuda:0, cpu, etc.)')
     
     args = parser.parse_args()
+
+    # Normalize image argument: prefer --image over --input if provided
+    if args.image:
+        args.input = args.image
+
+    # Determine checkpoint path: prefer explicit --checkpoint, else try to resolve
+    # from --model which is typically a directory name like 'pretrained'.
+    checkpoint_path = None
+    if args.checkpoint:
+        checkpoint_path = args.checkpoint
+    elif getattr(args, 'model', None):
+        # Try common layout: detectors/R50_TF/checkpoint/{model}/weights/best.pt
+        detect_dir = os.path.dirname(os.path.abspath(__file__))
+        candidate = os.path.join(detect_dir, 'checkpoint', args.model, 'weights', 'best.pt')
+        if os.path.exists(candidate):
+            checkpoint_path = candidate
+        else:
+            # If model refers directly to a file path, accept it
+            if os.path.isabs(args.model) and os.path.exists(args.model):
+                checkpoint_path = args.model
+            else:
+                # Try resolving relative to project root
+                project_root = os.path.dirname(os.path.dirname(detect_dir))
+                candidate2 = os.path.join(project_root, args.model)
+                if os.path.exists(candidate2):
+                    checkpoint_path = candidate2
+
+    # If still not found, keep existing behavior (will raise later)
+    if checkpoint_path:
+        args.checkpoint = checkpoint_path
     
     # Resolve config path
     config_path = resolve_config_path(args.config)
@@ -187,23 +227,19 @@ def main():
     print(f"Running inference on {args.input}")
     probability, label, runtime_ms = run_inference(model, args.input, device)
     
-    # Create output dictionary
-    result = {
-        "method": "R50_TF",
-        "version": "1.0.1",
-        "input": args.input,
-        "score": round(probability, 4),
-        "label": label,
-        "runtime_ms": runtime_ms
-    }
-    
-    # Write JSON output
-    os.makedirs(os.path.dirname(args.output) if os.path.dirname(args.output) else '.', exist_ok=True)
-    with open(args.output, 'w') as f:
-        json.dump(result, f, indent=2)
-    
-    print(f"Results saved to {args.output}")
-    print(f"Score: {probability:.4f}, Label: {label}, Runtime: {runtime_ms}ms")
+    # Format result to match other detectors (prediction/confidence/elapsed_time)
+    elapsed_time = runtime_ms / 1000.0
+    formatted = format_result(label, float(round(probability, 4)), elapsed_time)
+
+    # Save using shared utility
+    if args.output:
+        save_result(formatted, args.output)
+        print(f"Results saved to {args.output}")
+
+    # Print concise output for user
+    print(f"Prediction: {formatted['prediction']}")
+    print(f"Confidence: {formatted['confidence']:.4f}")
+    print(f"Time: {formatted['elapsed_time']:.3f}s")
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@
     "split_file": "/home/andrea.montibeller/Image-Deepfake-Detectors-Public-Library/split.json",
     "softmax" : false,
     "prototype" : "fake", 
-    "scenario": ["gan2:fb"],
+    "scenario": ["realFORLAB:fb"],
     "upperbound" : false,
     "random_select" : false,
     "precision" : "fp16"

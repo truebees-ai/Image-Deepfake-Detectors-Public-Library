@@ -1,37 +1,151 @@
-# TITOLO
 
-# DeepShield Dataset
-The dataset is available at this [link](https://zenodo.org/records/15648378)
+# Image Deepfake Detectors Public Library
 
+## Overview
 
-# Detectors
+This repository provides a unified framework for training, testing, and benchmarking multiple deepfake detection models. It supports automated experiments, demo runs, and single-image detection, with modular configuration and extensible detector support.
 
-## Use pretrained network
-The R50-E2P network was trained according to the information provided in the paper on a limited subset of non-shared data.\
-If you plan on using the network for other purposes other than to replicate the results in the paper, you should re-train it on a more comprehensive subset.
+### Main Features
 
-Create directory with ```mkdir -p ./detector/train/gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre/models/```.\
-And put the [pretrained weigths](https://drive.usercontent.google.com/download?id=1m0b8HZuOCcF_-l2-GJBi3C22RuG5UDvU&export=download) inside, make sure that the file is named ```best.pt```.
+- **Multiple Detectors:** Supports CLIP-D, NPR, P2G, R50_TF, R50_nodown, and more.
+- **Automated Training & Testing:** Use `launcher.py` to run experiments across detectors and datasets.
+- **Demo Mode:** Easily test all detectors on sample images in `demo_images/`.
+- **Single Image Detection:** Run detection on individual images via command-line.
+- **Flexible Configuration:** All experiment parameters are set via YAML files in `configs/`.
+- **Logging & Results:** Logs and results are saved per detector and scenario for easy analysis.
 
-## Set up Virtual-Env
+---
+
+## Data Organization
+
+### Dataset Structure
+
+- **Main Dataset:** Organize your dataset as specified in the YAML config (`dataset_path`). Example:
+	```
+	/path/to/dataset/
+			Real/
+			Fake/
+	```
+- **Demo Images:** Place sample images for quick testing in `demo_images/`, organized by platform and label:
+	```
+	demo_images/
+			Facebook/
+					Fake/
+					Real/
+			PreSocial/
+					Fake/
+					Real/
+			Telegram/
+					Fake/
+					Real/
+			X/
+					Fake/
+					Real/
+	```
+
+### Split Files
+
+- **split.json:** Main split file for experiments. Format: JSON with train/test keys and lists of sample IDs.
+- **split_demo.json:** Auto-generated for demo mode, covering all images in `demo_images/`.
+
+---
+
+## Weights Organization
+
+- **Pretrained Weights:** Place weights in each detector's folder:
+	```
+	detectors/<DETECTOR>/checkpoint/pretrained/weights/best.pt
+	```
+- **Demo Mode:** The launcher will copy weights to a temporary location for demo runs.
+- **Custom Weights:** Specify custom weights via command-line (`--weights_name`).
+
+---
+
+## Configuration
+
+- **YAML Files:** All detectors have a config file in `configs/` (e.g., `CLIP-D.yaml`, `NPR.yaml`).
+- **Config Options:**
+	- `global`: Dataset path, device, split file, threads, etc.
+	- `detector_args`: Model-specific arguments.
+	- `training`: List of training scenarios.
+	- `testing`: List of test scenarios.
+
+---
+
+## Usage
+
+### 1. Environment Setup
+
+Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
+Or use conda:
+```bash
 conda env create -f environment.yml
 ```
 
-## Run the code
-Run the code inside ```./detector/```\
-We suggest to use the provided launcher to automate training and test phases:
+### 2. Running Experiments
+
+**Automated (Recommended):**
+```bash
+python launcher.py --detector <DETECTOR> --phases both
 ```
-python launcher.py
+- `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`
+- `--phases`: `train`, `test`, or `both`
+
+**Manual:**
+```bash
+cd detectors/<DETECTOR>
+python train.py --name <EXPERIMENT_NAME> --split_file <SPLIT_FILE> --task train --data_keys <DATA_KEYS> --data_root <DATASET_ROOT> --device <DEVICE>
+python test.py --name <EXPERIMENT_NAME> --split_file <SPLIT_FILE> --task test --data_keys <DATA_KEYS> --data_root <DATASET_ROOT> --device <DEVICE>
 ```
 
-Alternatively you can make individual calls using ```train.py``` and ```test.py```:
-```
-python train.py --name "gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre" --split_file ./split.json --task train --num_threads 8 --data_keys "gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre" --data_root DATASET_ROOT --device cuda:0 --arch nodown --prototype --freeze
-python test.py --name "gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre" --split_file ./split.json --task test --num_threads 8 --data_keys DATA_ID --data_root DATASET_ROOT --device cuda:0 --arch nodown --prototype --freeze
-```
-If you call ```train.py``` and ```test.py``` directly, you have to specify ```DATASET_ROOT``` in both and ```DATA_ID``` for the test code, according to [this guideline](detector/README.md).
+### 3. Demo Mode
 
-# Results
+Test all detectors on sample images:
+```bash
+python launcher.py --demo
+```
+
+### 4. Single Image Detection
+
+```bash
+python launcher.py --detect --detector <DETECTOR> --image <IMAGE_PATH> --weights <WEIGHTS_PATH>
+```
+
+---
+
+## Results & Logs
+
+- **Results:** Saved in `detectors/<DETECTOR>/results/`
+- **Logs:** Saved in `logs/` per run and scenario
+
+---
+
+## Supported Detectors
+
+- CLIP-D
+- NPR
+- P2G
+- R50_TF
+- R50_nodown
+
+Each detector has its own folder with scripts for training, testing, and detection.
+
+---
+
+## Advanced
+
+- **Custom Configs:** Add new YAML files in `configs/` for new detectors or scenarios.
+- **Extending:** Add new detectors by creating a folder in `detectors/` and updating `launcher.py`.
+
+---
+
+## Citation & Dataset
+
+- DeepShield Dataset: [Zenodo link](https://zenodo.org/records/15648378)
+
+---
 
 

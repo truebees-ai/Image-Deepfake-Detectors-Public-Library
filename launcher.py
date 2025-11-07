@@ -193,18 +193,30 @@ def main():
     parser.add_argument('--config-dir', type=str, default='configs',
                         help='Path to configs directory (default: configs/)'),
     parser.add_argument('--weights_name', type=str, default=None, 
-                        help='Name of the weights directory ')
+                        help='Name of the weights directory')
     parser.add_argument('--demo', action='store_true', help='Run demo on demo_images across detectors')
     parser.add_argument('--demo-detector', type=str, default='all', choices=['all', 'R50_TF', 'R50_nodown', 'CLIP-D', 'P2G', 'NPR'], help='Which detector to demo (default: all)')
+    
+    # Add detect mode arguments
+    detect_group = parser.add_argument_group('detect', 'Single image detection options')
+    detect_group.add_argument('--detect', action='store_true', help='Run single image detection mode')
+    detect_group.add_argument('--image', type=str, help='Path to image file for detection')
+    detect_group.add_argument('--weights', type=str, default='pretrained', help='Path to model weights for detection')
+    detect_group.add_argument('--output', type=str, help='Path to save detection results')
+    detect_group.add_argument('--dry-run', action='store_true', help='Print commands without executing')
     
     args = parser.parse_args()
 
     if args.demo:
         return run_demo(args)
-    
-    if args.demo:
-        run_demo(args)
-        return
+        
+    if args.detect:
+        if args.detector is None:
+            parser.error('--detector is required for detect mode')
+        if args.image is None:
+            parser.error('--image is required for detect mode')
+        from support.detect import run_detect
+        return run_detect(args)
 
     if args.detector is None:
         parser.error('--detector is required unless --demo is specified')
