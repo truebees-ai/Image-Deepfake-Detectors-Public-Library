@@ -225,7 +225,7 @@ def load_configuration():
     args = setup_parser().parse_args()
     param = load_json(args.config)
     if args.resume == "":
-        args.resume = f'./train/{param["run_name"]}/models/best.pt'
+        args.resume = f'./best.pt'
     args_dict = vars(args)
     args_dict.update(param)
     return args_dict
@@ -292,8 +292,8 @@ def accuracy_binary(y_pred, y_true, increment=2):
 
 
 def prepare_model(args):
-    checkpoint = torch.load(args["resume"], map_location=args["device"])
-
+    #checkpoint = torch.load(args["resume"], map_location=args["device"])
+    checkpoint = torch.load(f'./checkpoint/{args["run_name"]}/weights/best.pt', map_location=args["device"])
     # update config args
     args["K"] = checkpoint["K"]
     args["topk_classes"] = checkpoint["topk_classes"]
@@ -359,7 +359,6 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
         keys_dict["upperbound"] = upperbound_selection(targets)
         if args["upperbound"]:
             keys_dict["prototype"] = "upperbound"
-
         outputs = model.interface(inputs, object_name, total_tasks, keys_dict)
 
         if args["softmax"]:
@@ -367,7 +366,8 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
         return compute_predictions(outputs)
     
     # File paths
-    output_dir = f'./train/{args["run_name"]}/data/{args["scenario"]}'
+    output_dir = f'./results/{args["run_name"]}/data/{args["scenario"]}'
+    os.makedirs(output_dir, exist_ok=True)
     csv_filename = os.path.join(output_dir, 'results.csv')
     metrics_filename = os.path.join(output_dir, 'metrics.json')
     image_results_filename = os.path.join(output_dir, 'image_results.json')
@@ -451,11 +451,14 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
     real_mask = all_binary_labels == 0
     if real_mask.sum() > 0:
         # Overall TNR calculated on all real images in the test set
-        overall_tnr = accuracy_score(all_binary_labels[real_mask], predictions[real_mask])
+        tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
+    else:
+        tnr = 0.0
         
         # Map TNR to training dataset keys (as shown in the example JSON structure)
-        for training_key in training_dataset_keys:
-            tnr_per_dataset[training_key] = overall_tnr
+        # The TNR is calculated on the test set, but organized by training dataset keys
+        #for training_key in training_dataset_keys:
+        #    tnr_per_dataset[training_key] = overall_tnr
     
     # AUC calculation
     # For AUC, we need probabilities. Since predictions are binary (0/1), we'll use the scores
@@ -481,7 +484,7 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
     # Prepare metrics JSON
     metrics = {
         'TPR': float(tpr),
-        'TNR': {k: float(v) for k, v in tnr_per_dataset.items()},
+        'TNR': float(tnr),
         'Acc total': float(total_accuracy),
         'AUC': float(auc),
         'execution time': float(execution_time)
@@ -499,7 +502,7 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
     print(f'Image results saved to {image_results_filename}')
     print(f'\nMetrics (using mix_top_mean):')
     print(f'  TPR: {tpr:.4f}')
-    print(f'  TNR: {tnr_per_dataset}')
+    print(f'  TNR: {tnr:.4f}')
     print(f'  Accuracy: {total_accuracy:.4f}')
     print(f'  AUC: {auc:.4f}')
     print(f'  Execution time: {execution_time:.2f} seconds')
@@ -519,7 +522,7 @@ if __name__ == "__main__":
 
     for s in scenarios:
         args["scenario"] = s
-        os.makedirs(f'./train/{args["run_name"]}/data/{args["scenario"]}', exist_ok=True)
+        os.makedirs(f'./results/{args["run_name"]}/data/{args["scenario"]}', exist_ok=True)
 
         test_loader = prepare_data_loader(args)
         inference_step(args, model, test_loader, keys_dict)

@@ -33,16 +33,21 @@ def get_gpus():
 
     return free, memory
 
-def autotest(train_list, data_list, detector_name):
+def autotest(train_list, data_list, detector_name, checkpoint_name):
     """Generate task list from training and testing configurations."""
     assert type(data_list) == list
     task_list = []
+
     for train_config in train_list:
+        
         train_dict = {'detector': detector_name, 'model': None, 'data': train_config['data']}
         task_list.append({'type':'train', 'details':train_dict})
+        
         for data in data_list:
-            name = train_dict['data']
+            
+            name = checkpoint_name #train_dict['data']
             task_list.append({'type':'test', 'details':{'detector': detector_name, 'model': name, 'data': data}})
+    
     return task_list
 
 
@@ -68,7 +73,9 @@ def main():
                         choices=['train', 'test', 'both'],
                         help='Phases to run: train, test, or both (default: both)')
     parser.add_argument('--config-dir', type=str, default='configs',
-                        help='Path to configs directory (default: configs/)')
+                        help='Path to configs directory (default: configs/)'),
+    parser.add_argument('--weights_name', type=str, default=None, 
+                        help='Name of the weights directory ')
     
     args = parser.parse_args()
     
@@ -83,6 +90,11 @@ def main():
     global_config = config.get('global', {})
     dataset_path = global_config.get('dataset_path')
     device_override = global_config.get('device_override')  # Can be None
+    if args.weights_name is not None:
+        global_config['name'] = args.weights_name
+    else:
+        global_config['name'] = config.get('training', [])[0]['data']
+    model_name = global_config.get('name')
     # Handle string "null" as None
     if device_override == "null" or device_override == "":
         device_override = None
@@ -91,7 +103,6 @@ def main():
     num_threads = global_config.get('num_threads', 8)
     dry_run = global_config.get('dry_run', False)
     only_list = global_config.get('only_list', False)
-    
     phases = parse_phases(args.phases)
     
     detector_args = config.get('detector_args', [])
@@ -103,7 +114,7 @@ def main():
     # Generate tasks
     tasks = []
     if training_configs:
-        tasks.extend(autotest(training_configs, test_list, args.detector))
+        tasks.extend(autotest(training_configs, test_list, args.detector, model_name))
     
     print('Number of tasks:', len(tasks))
     for task in tasks:
@@ -118,10 +129,11 @@ def main():
             continue
         
         cmd_args = []
+        
         if task['type'] == 'train':
-            cmd_args.append(f'--name "{task["details"]["data"]}_freeze_down"')
+            cmd_args.append(f'--name "{model_name}"')#{task["details"]["model"]}"')
         else:
-            cmd_args.append(f'--name "{task["details"]["model"]}_freeze_down"')
+            cmd_args.append(f'--name "{task["details"]["model"]}"')
         
         cmd_args.append(f'--split_file {split_file}')
         cmd_args.append(f'--task {task["type"]}')
@@ -154,7 +166,8 @@ def main():
         
         # Call train.py or test.py
         if not dry_run:
-            log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{task["details"]["model"]}_{task["details"]["data"]}.log'
+            #log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{task["details"]["model"]}_{task["details"]["data"]}.log'
+            log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{model_name}_{task["details"]["data"]}.log'
             with open(log_file, 'w') as f:
                 cwd = os.getcwd()
                 os.chdir(f'./detectors/{task["details"]["detector"]}')
@@ -163,7 +176,8 @@ def main():
                 
                 runner = f'{task["type"]}.py'
                 print(f'Call to {runner} with: {cmd_args_str}')
-                subprocess.run(f'python -u {runner} {cmd_args_str}', shell=True, stdout=f, stderr=f)
+                
+                subprocess.run(f'python -u {runner} {cmd_args_str}', shell=True)#, stdout=f, stderr=f)
                 
                 end_time = time.time()
                 print(f'Execution time: {end_time-start_time:.2f} seconds')

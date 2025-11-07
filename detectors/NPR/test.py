@@ -53,7 +53,7 @@ seed_torch(100)
 
 
 opt = TestOptions().parse(print_options=False)
-opt.model_path = f'./train/{opt.name}/models/best.pt'
+opt.model_path = os.path.join(f'./checkpoint/{opt.name}/weights/best.pt')
 print(f'Model_path {opt.model_path}')
 
 
@@ -66,7 +66,7 @@ model.eval()
 opt.no_resize = False
 opt.no_crop   = True
 
-output_dir = f'./train/{opt.name}/data/{opt.data_keys}'
+output_dir = f'./results/{opt.name}/data/{opt.data_keys}'
 os.makedirs(output_dir, exist_ok=True)
 
 test_dataloader = create_dataloader(opt, split='test')
@@ -158,11 +158,13 @@ tnr_per_dataset = {}
 real_mask = all_labels == 0
 if real_mask.sum() > 0:
     # Overall TNR calculated on all real images in the test set
-    overall_tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
+    tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
+else:
+    tnr = 0.0
     
     # Map TNR to training dataset keys (as shown in the example JSON structure)
-    for training_key in training_dataset_keys:
-        tnr_per_dataset[training_key] = overall_tnr
+    #for training_key in training_dataset_keys:
+    #    tnr_per_dataset[training_key] = overall_tnr
 
 # AUC calculation (using probabilities)
 if len(np.unique(all_labels)) > 1:  # Need both classes for AUC
@@ -175,7 +177,7 @@ execution_time = time.time() - start_time
 # Prepare metrics JSON
 metrics = {
     'TPR': float(tpr),
-    'TNR': {k: float(v) for k, v in tnr_per_dataset.items()},
+    'TNR': float(tnr),
     'Acc total': float(total_accuracy),
     'AUC': float(auc),
     'execution time': float(execution_time)
@@ -193,7 +195,7 @@ print(f'\nMetrics saved to {metrics_filename}')
 print(f'Image results saved to {image_results_filename}')
 print(f'\nMetrics:')
 print(f'  TPR: {tpr:.4f}')
-print(f'  TNR: {tnr_per_dataset}')
+print(f'  TNR: {tnr:.4f}')
 print(f'  Accuracy: {total_accuracy:.4f}')
 print(f'  AUC: {auc:.4f}')
 print(f'  Execution time: {execution_time:.2f} seconds')

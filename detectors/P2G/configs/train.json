@@ -12,9 +12,9 @@
     "ensembling" : [false, false, true, false],
     "precision" : "fp16",
     "dataset": "TrueFake",
-    "task_name": ["sdXL:pre&realFORLAB:pre"],
-    "data_path": "/media/mmlab/Volume2/TrueFake/",
-    "split_file": "/home/stefano.dellanna/02_TrueFake/split.json",
+    "task_name": ["gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre"],
+    "data_path": "/media/mmlab/Datasets_4TB/TrueFake/",
+    "split_file": "/home/andrea.montibeller/Image-Deepfake-Detectors-Public-Library/split.json",
     "multiclass": [0, 0, 0, 0, 0],
     "class_order": [0, 1],
     "memory_size": 0,
@@ -33,8 +33,8 @@
     "milestones" : [20, 30],
     "lrate_decay" : 0.1,
     "weight_decay" : 2e-4,
-    "run_name" : "sdXL:pre&realFORLAB:pre",
-    "device" : "cuda:0",
+    "run_name" : "gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre",
+    "device" : "cuda:1",
     "task" : "train",
     "num_workers" : 12
 }

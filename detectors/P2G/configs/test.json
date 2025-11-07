@@ -1,13 +1,13 @@
 {   
-    "run_name" : "sdXL:pre&realFORLAB:pre",
+    "run_name" : "gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre",
     "device" : "cuda:0",
     "batch_size_eval" :512,
     "dataset": "TrueFake",
-    "data_path": "/media/mmlab/Volume2/TrueFake/",
-    "split_file": "/home/stefano.dellanna/02_TrueFake/split.json",
+    "data_path": "/media/mmlab/Datasets_4TB/TrueFake/",
+    "split_file": "/home/andrea.montibeller/Image-Deepfake-Detectors-Public-Library/split.json",
     "softmax" : false,
     "prototype" : "fake", 
-    "scenario": ["flux:tw"],
+    "scenario": ["sd2:fb"],
     "upperbound" : false,
     "random_select" : false,
     "precision" : "fp16"

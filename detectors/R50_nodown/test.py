@@ -17,7 +17,7 @@ def test(loader, model, settings, device):
     start_time = time.time()
     
     # File paths
-    output_dir = f'./train/{settings.name}/data/{settings.data_keys}'
+    output_dir = f'./results/{settings.name}/{settings.data_keys}/data/'
     os.makedirs(output_dir, exist_ok=True)
     
     csv_filename = os.path.join(output_dir, 'results.csv')
@@ -103,12 +103,14 @@ def test(loader, model, settings, device):
     real_mask = all_labels == 0
     if real_mask.sum() > 0:
         # Overall TNR calculated on all real images in the test set
-        overall_tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
+        tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
+    else:
+        tnr = 0.0
         
         # Map TNR to training dataset keys (as shown in the example JSON structure)
         # The TNR is calculated on the test set, but organized by training dataset keys
-        for training_key in training_dataset_keys:
-            tnr_per_dataset[training_key] = overall_tnr
+        #for training_key in training_dataset_keys:
+        #    tnr_per_dataset[training_key] = overall_tnr
     
     # AUC calculation (needs probabilities, so we'll use sigmoid on scores)
     if len(np.unique(all_labels)) > 1:  # Need both classes for AUC
@@ -123,7 +125,7 @@ def test(loader, model, settings, device):
     # Prepare metrics JSON
     metrics = {
         'TPR': float(tpr),
-        'TNR': {k: float(v) for k, v in tnr_per_dataset.items()},
+        'TNR': float(tnr),
         'Acc total': float(total_accuracy),
         'AUC': float(auc),
         'execution time': float(execution_time)
@@ -141,7 +143,7 @@ def test(loader, model, settings, device):
     print(f'Image results saved to {image_results_filename}')
     print(f'\nMetrics:')
     print(f'  TPR: {tpr:.4f}')
-    print(f'  TNR: {tnr_per_dataset}')
+    print(f'  TNR: {tnr:.4f}')
     print(f'  Accuracy: {total_accuracy:.4f}')
     print(f'  AUC: {auc:.4f}')
     print(f'  Execution time: {execution_time:.2f} seconds')
@@ -158,8 +160,7 @@ if __name__ == '__main__':
     model = create_architecture(settings.arch, pretrained=True, num_classes=1).to(device)
     num_parameters = count_parameters(model)
     print(f"Arch: {settings.arch} with #parameters {num_parameters}")
-    
-    load_path = f'./train/{settings.name}/models/best.pt'
+    load_path = f'./checkpoint/{settings.name}/weights/best.pt'
     
     print('loading the model from %s' % load_path)
     model.load_state_dict(torch.load(load_path, map_location=device)['model'])

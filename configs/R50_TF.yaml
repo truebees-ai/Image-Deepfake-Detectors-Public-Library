@@ -7,6 +7,7 @@ global:
   dry_run: false
   only_list: false
 
+
 detector_args:
   - "--arch"
   - "nodown"

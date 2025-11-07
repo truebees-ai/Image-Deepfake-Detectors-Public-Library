@@ -24,7 +24,7 @@ def train(args):
             logging.StreamHandler(sys.stdout),
         ],
     )
-    os.makedirs(f'./train/{args["run_name"]}/models', exist_ok=True)
+    os.makedirs(f'./checkpoint/{args["run_name"]}/weights', exist_ok=True)
 
     _set_random(args)
     #_set_device(args)
@@ -52,7 +52,6 @@ def train(args):
     for task in range(data_manager.nb_tasks):
         logging.info("All params: {}".format(count_parameters(model.network)))
         logging.info("Trainable params: {}".format(count_parameters(model.network, True)))
-
         model.incremental_train(data_manager)
         record_task_accuracy(task, model.eval_task(), acc_matrix, label_history)
         model.after_task(data_manager.nb_tasks)
