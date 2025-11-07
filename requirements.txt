@@ -1,22 +1,28 @@
 # ML / DL Frameworks
 keras==3.3.3
 tensorflow==2.16.1
-torch==2.3.1
-torchaudio==2.4.0
-torchvision==0.19.0
+torch==2.4.0
+torchaudio==2.4.0          
+torchvision==0.19        
 
 # Hugging Face & Timm
-accelerate==1.1.1
-diffusers==0.11.1
-timm==1.0.11
-transformers==4.25.1
+# ---
+# FIXED: Removed old, incompatible versions.
+# The versions below (e.g., transformers==4.25.1) are from 2022
+# and are NOT compatible with torch==2.3.1 (from 2024).
+# Pip will now find the latest compatible versions.
+# ---
+accelerate
+diffusers
+timm
+transformers
 
 # ML/DL Helpers
 einops==0.8.0
 mmengine==0.10.6
 torch-kmeans==0.2.0
 torchsr==1.0.4
-xformers==0.0.27.post2
+xformers
 
 # Data Science
 matplotlib==3.9.3
@@ -30,7 +36,7 @@ sympy==1.13.3
 altair==5.5.0
 fastapi==0.115.6
 Flask==3.0.3
-gradio==3.40.0
+gradio                 # FIXED: Removed old version (3.40.0)
 graphene==3.4.1
 gunicorn==23.0.0
 uvicorn==0.32.1
@@ -55,3 +61,6 @@ SQLAlchemy==2.0.36
 tqdm==4.67.1
 txtorcon==23.11.0
 yapf==0.43.0
+albumentations
+ftfy
+open-clip-torch

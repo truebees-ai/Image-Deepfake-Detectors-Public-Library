@@ -1,5 +1,5 @@
 {   
-    "run_name" : "gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre",
+    "run_name" : "pretrained",
     "device" : "cuda:0",
     "batch_size_eval" :512,
     "dataset": "TrueFake",
@@ -7,7 +7,7 @@
     "split_file": "/home/andrea.montibeller/Image-Deepfake-Detectors-Public-Library/split.json",
     "softmax" : false,
     "prototype" : "fake", 
-    "scenario": ["sd2:fb"],
+    "scenario": ["gan2:fb"],
     "upperbound" : false,
     "random_select" : false,
     "precision" : "fp16"

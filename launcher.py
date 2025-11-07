@@ -4,6 +4,8 @@ import subprocess
 import time
 import argparse
 import yaml
+import glob
+import shutil
 
 
 def load_config(config_path):
@@ -63,10 +65,147 @@ def parse_phases(phases_str):
         raise ValueError(f"Invalid phases: {phases_str}. Must be 'train', 'test', or 'both'")
 
 
+def run_demo(args):
+    import json
+    import torch
+
+    project_root = os.path.abspath(os.path.dirname(__file__))
+    demo_root = os.path.join(project_root, 'demo_images')
+    assert os.path.isdir(demo_root), f"Demo folder not found: {demo_root}"
+
+    # Build split file from demo_images
+    def build_demo_split_json(root_path, out_path):
+        test_entries = []
+        for mod in ['PreSocial', 'Facebook', 'Telegram', 'Twitter']:
+            mod_path = os.path.join(root_path, mod)
+            if not os.path.isdir(mod_path):
+                continue
+            for dirpath, dirnames, filenames in os.walk(mod_path, topdown=True, followlinks=True):
+                if len(dirnames):
+                    continue
+                rel_dir = f"{dirpath}/".replace(mod_path + os.sep, '')
+                parts = rel_dir.split(os.sep)[:3]
+                if len(parts) < 3:
+                    continue
+                label, gen, sub = parts
+                for fname in sorted(filenames):
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext not in ['.png', '.jpg', '.jpeg']:
+                        continue
+                    stem = os.path.splitext(fname)[0]
+                    test_entries.append(os.path.join(gen, sub, stem))
+
+        with open(out_path, 'w') as f:
+            json.dump({'test': sorted(list(set(test_entries)))}, f)
+
+    split_demo_file = os.path.join(project_root, 'split_demo.json')
+    build_demo_split_json(demo_root, split_demo_file)
+
+    def prepare_best_checkpoint(detector_dir, preferred_path=None):
+        weights_dir = os.path.join(detector_dir, 'checkpoint', 'pretrained', 'weights')
+        src_weight = None
+
+        if preferred_path:
+            src_weight = preferred_path if os.path.isabs(preferred_path) else os.path.normpath(os.path.join(detector_dir, preferred_path))
+            if not os.path.isfile(src_weight):
+                print(f"[demo] Preferred weights not found at {src_weight}, falling back to search")
+                src_weight = None
+
+        if src_weight is None:
+            if not os.path.isdir(weights_dir):
+                return None
+            candidates = []
+            for ext in ('*.pt', '*.pth'):
+                candidates.extend(glob.glob(os.path.join(weights_dir, ext)))
+            if not candidates:
+                return None
+            src_weight = sorted(candidates)[0]
+
+        run_dir = os.path.join(detector_dir, 'checkpoint', 'demo', 'weights')
+        os.makedirs(run_dir, exist_ok=True)
+        dst_weight = os.path.join(run_dir, 'best.pt')
+        shutil.copy2(src_weight, dst_weight)
+        return dst_weight
+
+    def move_results_to_demo(detector_dir, name):
+        # Move any detectors/<method>/train/demo/data/<scenario>/results.csv
+        data_root = os.path.join(detector_dir, 'train', name, 'data')
+        if not os.path.isdir(data_root):
+            return
+        for dirpath, dirnames, filenames in os.walk(data_root):
+            if 'results.csv' in filenames:
+                # dirpath ends with .../data/<scenario>
+                scenario = os.path.basename(dirpath)
+                src = os.path.join(dirpath, 'results.csv')
+                dst_dir = os.path.join(detector_dir, 'results', 'demo', scenario)
+                os.makedirs(dst_dir, exist_ok=True)
+                dst = os.path.join(dst_dir, 'results.csv')
+                try:
+                    if os.path.exists(dst):
+                        os.remove(dst)
+                    shutil.move(src, dst)
+                    print(f"[demo] Saved results to {dst}")
+                except Exception as e:
+                    print(f"[demo] Could not move results file from {src} to {dst}: {e}")
+
+    device = f"cuda:0" if torch.cuda.is_available() else "cpu"
+    name = 'demo'
+
+    detectors_root = os.path.join(project_root, 'detectors')
+    all_methods = ['R50_nodown', 'CLIP-D', 'R50_TF', 'P2G', 'NPR']
+    methods = all_methods if args.demo_detector == 'all' else [args.demo_detector]
+
+    os.makedirs(os.path.join(project_root, 'logs'), exist_ok=True)
+
+    for method in methods:
+        det_dir = os.path.join(detectors_root, method)
+        if not os.path.isdir(det_dir):
+            continue
+
+        preferred_weights = args.weights_name or './checkpoint/pretrained/weights/best.pt'
+        best_path = prepare_best_checkpoint(det_dir, preferred_weights)
+        if best_path is None:
+            print(f"[demo] Skipping {method}: no pretrained weights found under checkpoint/pretrained/weights/")
+            continue
+
+        config_path = os.path.join(args.config_dir, f'{method}.yaml')
+        config = load_config(config_path) if os.path.exists(config_path) else {}
+        detector_args = config.get('detector_args', [])
+        testing_keys = config.get('testing', []) or ['all:all']
+        global_cfg = config.get('global', {})
+        num_threads = global_cfg.get('num_threads', 8)
+
+        for data_keys in testing_keys:
+            args_list = [
+                f'--name "{name}"',
+                f'--task test',
+                f'--device {device}',
+                f'--split_file {split_demo_file}',
+                f'--data_root {demo_root}',
+                f'--data_keys "{data_keys}"',
+                f'--num_threads {num_threads}',
+            ] + detector_args
+
+            cmd_args = ' '.join(args_list)
+            log_file = os.path.join(project_root, 'logs', f'demo_{method}_{data_keys.replace(":","-")}.log')
+            with open(log_file, 'w') as f:
+                cwd = os.getcwd()
+                os.chdir(det_dir)
+                try:
+                    print(f"[demo] Running {method} test with args: {cmd_args}")
+                    runner = 'test.py'
+                    subprocess.run(f'python -u {runner} {cmd_args}', shell=True)#, stdout=f, stderr=f)
+                finally:
+                    os.chdir(cwd)            
+            #move_results_to_demo(det_dir, name)
+        shutil.rmtree(os.path.join(det_dir, 'checkpoint', 'demo'))
+
+    print('[demo] Completed. Results saved under detectors/<method>/results/demo/<scenario>/results.csv')
+
 def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Launcher for deepfake detector training and testing')
-    parser.add_argument('--detector', type=str, required=True,
+    parser.add_argument('--detector', type=str, required=False,
                         choices=['R50_TF', 'R50_nodown', 'CLIP-D', 'MISLNet', 'P2G', 'NPR'],
                         help='Detector to use')
     parser.add_argument('--phases', type=str, default='both',
@@ -76,9 +215,21 @@ def main():
                         help='Path to configs directory (default: configs/)'),
     parser.add_argument('--weights_name', type=str, default=None, 
                         help='Name of the weights directory ')
+    parser.add_argument('--demo', action='store_true', help='Run demo on demo_images across detectors')
+    parser.add_argument('--demo-detector', type=str, default='all', choices=['all', 'R50_TF', 'R50_nodown', 'CLIP-D', 'P2G', 'NPR'], help='Which detector to demo (default: all)')
     
     args = parser.parse_args()
+
+    if args.demo:
+        return run_demo(args)
     
+    if args.demo:
+        run_demo(args)
+        return
+
+    if args.detector is None:
+        parser.error('--detector is required unless --demo is specified')
+
     # Load configuration from YAML
     config_path = os.path.join(args.config_dir, f'{args.detector}.yaml')
     if not os.path.exists(config_path):

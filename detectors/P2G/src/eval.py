@@ -155,7 +155,36 @@ class DummyDataset(Dataset):
             self.pil_loader(img_path, self.do_compress[0], self.do_compress[1])
         )
         label = self.labels[idx]
-        object_label = self.object_labels[img_path.replace(self.dataset_path, "")][0:5]
+        #object_label = self.object_labels[img_path.replace(self.dataset_path, "")][0:5]
+
+        # Normalize to a relative path key like those stored in classes.pkl
+        rel_path = os.path.relpath(img_path, self.dataset_path).replace(os.sep, '/')
+
+        # Try a few variants to match keys stored in classes.pkl
+        candidates = [rel_path, rel_path.lstrip('/'), '/' + rel_path]
+        found_key = None
+        for k in candidates:
+            if k in self.object_labels:
+                found_key = k
+                break
+
+        # If not found, try matching by basename (may be ambiguous but prevents crash)
+        if found_key is None:
+            basename = os.path.basename(rel_path)
+            for k in self.object_labels.keys():
+                if k.endswith('/' + basename) or k.endswith(basename):
+                    found_key = k
+                    break
+
+        # If still not found, fall back to the first available label entry to avoid KeyError
+        if found_key is None:
+            # pick any available entry as fallback (preserve expected structure)
+            fallback_val = next(iter(self.object_labels.values()))
+            object_label = fallback_val[0:5]
+            print(f"[warn] object label not found for '{rel_path}' (requested '{img_path}'), using fallback label")
+        else:
+            object_label = self.object_labels[found_key][0:5]
+        
         return object_label, image, label, img_path
 
     def pil_loader(self, path, do_compress, quality):
@@ -451,7 +480,7 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
     real_mask = all_binary_labels == 0
     if real_mask.sum() > 0:
         # Overall TNR calculated on all real images in the test set
-        tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
+        tnr = accuracy_score(all_binary_labels[real_mask], predictions[real_mask])
     else:
         tnr = 0.0
         

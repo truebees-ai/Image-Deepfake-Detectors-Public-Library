@@ -1,3 +1,10 @@
 *.pth
 *.pt
 detectors/*/results/*
+venv_OS_library/
+copy_images.sh
+demo_images/
+split_demo.json
+detectors/*/checkpoint/gan2*
+detectors/*/checkpoint/demo
+
