@@ -127,27 +127,7 @@ def run_demo(args):
         shutil.copy2(src_weight, dst_weight)
         return dst_weight
 
-    def move_results_to_demo(detector_dir, name):
-        # Move any detectors/<method>/train/demo/data/<scenario>/results.csv
-        data_root = os.path.join(detector_dir, 'train', name, 'data')
-        if not os.path.isdir(data_root):
-            return
-        for dirpath, dirnames, filenames in os.walk(data_root):
-            if 'results.csv' in filenames:
-                # dirpath ends with .../data/<scenario>
-                scenario = os.path.basename(dirpath)
-                src = os.path.join(dirpath, 'results.csv')
-                dst_dir = os.path.join(detector_dir, 'results', 'demo', scenario)
-                os.makedirs(dst_dir, exist_ok=True)
-                dst = os.path.join(dst_dir, 'results.csv')
-                try:
-                    if os.path.exists(dst):
-                        os.remove(dst)
-                    shutil.move(src, dst)
-                    print(f"[demo] Saved results to {dst}")
-                except Exception as e:
-                    print(f"[demo] Could not move results file from {src} to {dst}: {e}")
-
+    
     device = f"cuda:0" if torch.cuda.is_available() else "cpu"
     name = 'demo'
 
@@ -197,7 +177,6 @@ def run_demo(args):
                     subprocess.run(f'python -u {runner} {cmd_args}', shell=True)#, stdout=f, stderr=f)
                 finally:
                     os.chdir(cwd)            
-            #move_results_to_demo(det_dir, name)
         shutil.rmtree(os.path.join(det_dir, 'checkpoint', 'demo'))
 
     print('[demo] Completed. Results saved under detectors/<method>/results/demo/<scenario>/results.csv')
