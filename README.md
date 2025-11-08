@@ -121,6 +121,7 @@ python launcher.py --detector <DETECTOR> --phases <PHASE> --config-dir <CONFIG_F
 training:
   - data: gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre
 ```
+Which corresponds to the training sub-sets used to trained a detector (check section `Train on Different Generators from the DeepShield Dataset` for additional information).
 
 **4. Test model using the Pretrained weights on DeepShield Dataset:**
 ```bash
