@@ -8,7 +8,7 @@ Original Paper:
 
 Authors: Chuangchuang Tan, Huan Liu, Yao Zhao, Shikui Wei, Guanghua Gu, Ping Liu, Yunchao Wei.
 
-## Overview
+## Abstract
 
 Recently, the proliferation of highly realistic synthetic
 images, facilitated through a variety of GANs and Diffu-

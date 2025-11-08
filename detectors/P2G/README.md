@@ -9,7 +9,7 @@ Original Paper: [Conditioned Prompt-Optimization for Continual Deepfake Detectio
 
 Authors: Francesco Laiti, Benedetta Liberatori, Thomas De Min, Elisa Ricci
 
-## Overview
+## Abstract
 
 The rapid advancement of generative models has significantly enhanced the realism and customization of digital content creation. The increasing power of these tools, coupled with their ease of access, fuels the creation of photorealistic fake content, termed deepfakes, that raises substantial concerns about their potential misuse. In response, there has been notable progress in developing detection mechanisms to identify content produced by these advanced systems. 
 
