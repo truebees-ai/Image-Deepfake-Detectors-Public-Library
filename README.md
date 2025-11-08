@@ -173,7 +173,7 @@ And supported pairs of (key, social) are:
 'tw': [X Social]
 ```
 
-Then run `python json_compile.py`
+Then generate the corresponding `split.json` using `python support/json_compile.py`, and substitute it to `./split.json`
 
 ## Results & Logs
 
@@ -205,7 +205,7 @@ Organized your data by platform and label:
 					Real/
 ```
 
-Generate the corresponding `split.json` using `python json_compile.py`
+Generate the corresponding `split.json` using `python support/json_compile.py`, and substitute it to `./split.json`
 
 ### Split Files
 

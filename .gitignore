@@ -9,5 +9,5 @@ detectors/*/checkpoint/demo
 demo_images/*/
 detection_results/*
 logs/*
-demo_images.zip
-weights.zip
+*.zip
+split_truefake.json

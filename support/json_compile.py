@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, random_split
 import json
 import bisect
 
-dataset_path = os.path.join(os.sep, 'media', 'mmlab', 'Volume2', 'TrueFake') 
+dataset_path = os.path.join(os.sep, 'media', 'NAS', 'DeepShield') 
 
 datasets = []
 for dataset_root, dataset_dirs, dataset_files in os.walk(os.path.join(dataset_path), topdown=True, followlinks=True):
@@ -34,7 +34,7 @@ split = []
 train_set = []
 val_set = []
 test_set = []
-
+breakpoint()
 for dataset in [dataset for dataset in datasets if (dataset['shared'] == 'Telegram')]:
     print(dataset['id'])
     files_pre = [dataset_com for dataset_com in datasets if dataset_com['shared'] == 'PreSocial' and dataset_com['id'] == dataset['id']][0]['files']
@@ -62,14 +62,14 @@ for dataset in [dataset for dataset in datasets if (dataset['shared'] == 'Telegr
 
 print(len(train_set), len(val_set), len(test_set), ':', len(train_set)+len(val_set)+len(test_set))
 
-with open("train.json", "w") as f:
-    json.dump(train_set, f)
+#with open("train.json", "w") as f:
+#    json.dump(train_set, f)
 
-with open("val.json", "w") as f:
-    json.dump(val_set, f)
+#with open("val.json", "w") as f:
+#    json.dump(val_set, f)
 
-with open("test.json", "w") as f:
-    json.dump(test_set, f)
+#with open("test.json", "w") as f:
+#    json.dump(test_set, f)
 
 with open("split.json", "w") as f:
     json.dump({'train': sorted(train_set), 'val': sorted(val_set), 'test': sorted(test_set)}, f)
