@@ -1,4 +1,3 @@
-
 # Image Deepfake Detectors Public Library
 
 ## Overview
@@ -7,28 +6,29 @@ This repository provides a unified framework for training, testing, and benchmar
 
 ### Main Features
 
-- **Multiple Detectors:** Supports CLIP-D [1], NPR [2], P2G [3], R50_TF[4], and R50_nodown [5] (an overview for each method is provided in the README.md at the following path `./detectors/<DETECTOR>/README.md`)
-- **Pretrained Weights:** All models have been pretrained on images generated with StyleGAN2 and StableDiffusionXL, and real images from the FFHQ Dataset[6] and the FORLAB Dataset [7].
-- **Automated Training & Testing:** Use `launcher.py` to run experiments across detectors and datasets.
-- **Demo Mode:** Easily test all detectors on sample images in `demo_images/`.
-- **Single Image Detection:** Run detection on individual images via command-line.
-- **Flexible Configuration:** All experiment parameters are set via YAML files in `configs/`.
-- **Logging & Results:** Logs and results are saved per detector and scenario for easy analysis.
+-   **Multiple Detectors:** Supports CLIP-D [1], NPR [2], P2G [3], R50_TF [4], and R50_nodown [5] (an overview for each method is provided in its `README.md`: `./detectors/<DETECTOR>/README.md`)
+-   **Pretrained Weights:** All models have been pretrained on images generated with StyleGAN2 and StableDiffusionXL, and real images from the FFHQ Dataset [6] and the FORLAB Dataset [7].
+-   **Automated Training & Testing:** Use `launcher.py` to run experiments across detectors and datasets.
+-   **Demo Mode:** Easily test all detectors on sample images in `demo_images/`.
+-   **Single Image Detection:** Run detection on individual images via the command line.
+-   **Flexible Configuration:** All experiment parameters are set via YAML files in `configs/`.
+-   **Logging & Results:** Logs and results are saved per detector and scenario for easy analysis.
 
 ---
 
 ## Set-Up
 
-### Pre-requisite
+### Prerequisites
 
-`Python>=3.10` e `CUDA:12.0`
+`Python>=3.10` and `CUDA:12.0`
 
 ---
+
 ### Download Weights
 
-You can download of each model from this [link](https://drive.google.com/file/d/1F60FN2B9skRcb3YrZwhFTZQihbj3ipJQ/view?usp=sharing)
+You can download the weights for each model from this [link](https://drive.google.com/file/d/1F60FN2B9skRcb3YrZwhFTZQihbj3ipJQ/view?usp=sharing).
 
-Thus, copy them inside the `pretrained` folder of the corresponding model such as: `./detectors/<DETECTOR>/checkpoint/pretrained/weights/best.pt`
+Then, copy them into the `pretrained` folder for the corresponding model, following this structure: `./detectors/<DETECTOR>/checkpoint/pretrained/weights/best.pt`
 
 ---
 
@@ -36,63 +36,69 @@ Thus, copy them inside the `pretrained` folder of the corresponding model such a
 
 DeepShield Dataset: [Zenodo link](https://zenodo.org/records/15648378)
 
-Download the dataset and change correponsing `dataset_path` in `./configs/<DETECTOR>.yaml`
+Download the dataset and change the corresponding `dataset_path` in `./configs/<DETECTOR>.yaml`.
 
-```
-The DeepShield dataset is a large-scale benchmark for evaluating the robustness of fake image detection systems. It contains 100,000 images, divided between real and AI-generated content produced using advanced generative models, including StyleGAN, StyleGAN2, StyleGAN3, Stable Diffusion 1.5, 2.1, 3, and XL, as well as Flux 1.0.
+> The DeepShield dataset is a large-scale benchmark for evaluating the robustness of fake image detection systems. It contains 100,000 images, divided between real and AI-generated content produced using advanced generative models, including StyleGAN, StyleGAN2, StyleGAN3, Stable Diffusion 1.5, 2.1, 3, and XL, as well as Flux 1.0.
+>
+> To simulate real-world distortions, 30,000 images were shared on Facebook, X (formerly Twitter), and Telegram, then re-collected to include platform-induced compression and artifacts. This approach ensures that the dataset captures authentic distribution noise and artifacts encountered in real-world scenarios.
 
-To simulate real-world distortions, 30,000 images were shared on Facebook, X (formerly Twitter), and Telegram, then re-collected to include platform-induced compression and artifacts. This approach ensures that the dataset captures authentic distribution noise and artifacts encountered in real-world scenarios.
-```
 ---
 
 ### VirtualEnv
 
-Create a virtual-env using:
+Create a virtual environment using:
+
 ```bash
 python -m venv IDFD_VENV
 source IDFD_VENV/bin/activate
 pip install -r requirements.txt
-```
+````
+
 Or use conda:
+
 ```bash
 conda env create -f environment.yml
 conda activate IDFD_VENV
 ```
----
+
+-----
 
 ### Download Demo Dataset
-You can download of demo dataset from this [link](https://drive.google.com/file/d/134Bw8l9tEC7oZJpTAeMO80QRqgdJfJS9/view?usp=sharing). The demo dataset contains 200 images randomly samples from the DeepShield Dataset. \
+
+You can download the demo dataset from this [link](https://drive.google.com/file/d/134Bw8l9tEC7oZJpTAeMO80QRqgdJfJS9/view?usp=sharing). The demo dataset contains 200 images randomly sampled from the DeepShield Dataset.
 
 Place sample images for quick testing in `demo_images/`, organized by platform and label:
 
 ```
-	demo_images/
-			Facebook/
-					Fake/
-					Real/
-			PreSocial/
-					Fake/
-					Real/
-			Telegram/
-					Fake/
-					Real/
-			X/
-					Fake/
-					Real/
+    demo_images/
+            Facebook/
+                    Fake/
+                    Real/
+            PreSocial/
+                    Fake/
+                    Real/
+            Telegram/
+                    Fake/
+                    Real/
+            X/
+                    Fake/
+                    Real/
 ```
 
----
+-----
 
 ## Running Experiments
 
 **1. Run Demo:**
 
 Test all detectors on sample images:
+
 ```bash
 python launcher.py --demo --demo-detector all
 ```
 
-Test single detector on sample images:
+Test a single detector on sample images:
+
 ```bash
 python launcher.py --demo --demo-detector <DETECTOR>
 ```
@@ -104,54 +110,68 @@ To run both train and test using a specific `<DETECTOR>`:
 ```bash
 python launcher.py --detector <DETECTOR> --phases both
 ```
-- `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`
-- `--phases`: `train`, `test`, or `both`
 
-By doing so, the selected detector will be trained on images generated with by StyleGAN2 and StableDiffusionXL and real images from the FORLAB and FFHQ Dataset, **not shared on social network**.
+  - `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`
+  - `--phases`: `train`, `test`, or `both`
+
+By doing so, the selected detector will be trained on images generated by StyleGAN2 and StableDiffusionXL and real images from the FORLAB and FFHQ Datasets, **not shared on social networks**.
 
 **3. Manual Train-Test on DeepShield Dataset:**
+
 ```bash
 python launcher.py --detector <DETECTOR> --phases <PHASE> --config-dir <CONFIG_FILE_PATH> --weights_name <WEIGHTS_NAME>
 ```
-- `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`
-- `--phases`: `train`, `test`, or `both`
-- `--config-dir`: path to the detectors config files (default is `configs/`)
-- `--weights_name`: model weights name. Default is defined in `configs/<DETECTOR>.yaml` by these lines:
+
+  - `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`
+  - `--phases`: `train`, `test`, or `both`
+  - `--config-dir`: Path to the detector config files (default: `configs/`)
+  - `--weights_name`: Model weights name. The default is defined in `configs/<DETECTOR>.yaml` by these lines:
+
+<!-- end list -->
+
 ```
 training:
   - data: gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre
 ```
-Which corresponds to the training sub-sets used to trained a detector (check section `Train on Different Generators from the DeepShield Dataset` for additional information).
 
-**4. Test model using the Pretrained weights on DeepShield Dataset:**
+This corresponds to the training subsets used to train a detector (see the "Train on Different Generators from the DeepShield Dataset" section for more information).
+
+**4. Test the model using pretrained weights on the DeepShield Dataset:**
+
 ```bash
 python launcher.py --detector <DETECTOR> --phases test --weights_name pretrained
 ```
 
-**5. Train model using custom weights name on DeepShield Dataset:**
+**5. Train the model using a custom weights name on the DeepShield Dataset:**
+
 ```bash
 python launcher.py --detector <DETECTOR> --phases train --weights_name <WEIGHTS_NAME>
 ```
 
-**5. Perform Detection on Single Images:**
+**6. Perform Detection on Single Images:**
+
 ```bash
 python launcher.py --detect --detector <DETECTOR> --image <PATH_TO_IMAGE> --weights <WEIGHTS_NAME> --output <OUTPUT_PATH>
 ```
-- `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`
-- `--image`: path to input image
-- `--weights`: weights name, default is `pretrained`
-- `--output`: Path to save detection results, default is `detection_resutls`
 
----
+  - `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`
+  - `--image`: Path to the input image
+  - `--weights`: Weights name (default: `pretrained`)
+  - `--output`: Path to save detection results (default: `detection_results`)
+
+-----
 
 ## Train on Different Generators from the DeepShield Dataset
 
-To train a detector on generators different than StyleGAN2 and StableDiffusionXL, modify these lines in configs/<DETECTOR>.yaml` :
+To train a detector on generators different from StyleGAN2 and StableDiffusionXL, modify these lines in `configs/<DETECTOR>.yaml`:
+
 ```json
 training:
   - data: gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre
 ```
-Currently supported pairs of (key, sub-dataset) are:
+
+Currently supported pairs of `(key, sub-dataset)` are:
+
 ```
 'gan1':['StyleGAN']
 'gan2':['StyleGAN2']
@@ -165,7 +185,8 @@ Currently supported pairs of (key, sub-dataset) are:
 'realFORLAB':['FORLAB']
 ```
 
-And supported pairs of (key, social) are:
+And supported pairs of `(key, social)` are:
+
 ```
 'pre':[Not Shared on Social Networks],
 'fb': [Facebook]
@@ -173,57 +194,56 @@ And supported pairs of (key, social) are:
 'tw': [X Social]
 ```
 
-Then generate the corresponding `split.json` using `python support/json_compile.py`, and substitute it to `./split.json`
+Then, generate the corresponding `split.json` using `python support/json_compile.py` and use it to replace `./split.json`.
 
 ## Results & Logs
 
-- **Results:** Saved in `detectors/<DETECTOR>/results/`
-- **Logs:** Saved in `logs/` per run and scenario
+  - **Results:** Saved in `detectors/<DETECTOR>/results/`
+  - **Logs:** Saved in `logs/` per run and scenario
 
----
+-----
 
-
-## Train/Test on a new Dataset
+## Train/Test on a New Dataset
 
 ### Data Organization
 
-Organized your data by platform and label:
+Organize your data by platform and label:
 
 ```
-	demo_images/
-			Facebook/
-					Fake/
-					Real/
-			PreSocial/
-					Fake/
-					Real/
-			Telegram/
-					Fake/
-					Real/
-			X/
-					Fake/
-					Real/
+    demo_images/
+            Facebook/
+                    Fake/
+                    Real/
+            PreSocial/
+                    Fake/
+                    Real/
+            Telegram/
+                    Fake/
+                    Real/
+            X/
+                    Fake/
+                    Real/
 ```
 
-Generate the corresponding `split.json` using `python support/json_compile.py`, and substitute it to `./split.json`
+Generate the corresponding `split.json` using `python support/json_compile.py` and use it to replace `./split.json`.
 
 ### Split Files
 
-- **split.json:** Main split file for experiments. Format: JSON with train/test keys and lists of sample IDs.
-- **split_demo.json:** Auto-generated for demo mode, covering all images in `demo_images/`.
+  - **`split.json`:** Main split file for experiments. Format: JSON with `train`/`test` keys and lists of sample IDs.
+  - **`split_demo.json`:** Auto-generated for demo mode, covering all images in `demo_images/`.
 
----
+-----
 
 ## Additional Configuration Options
 
-- **YAML Files:** All detectors have a config file in `configs/` (e.g., `CLIP-D.yaml`, `NPR.yaml`).
-- **Config Options:**
-	- `global`: Dataset path, device, split file, threads, etc.
-	- `detector_args`: Model-specific arguments.
-	- `training`: List of training scenarios.
-	- `testing`: List of test scenarios.
+  - **YAML Files:** All detectors have a config file in `configs/` (e.g., `CLIP-D.yaml`, `NPR.yaml`).
+  - **Config Options:**
+      - `global`: Dataset path, device, split file, threads, etc.
+      - `detector_args`: Model-specific arguments.
+      - `training`: List of training scenarios.
+      - `testing`: List of test scenarios.
 
----
+-----
 
 ## References
 
@@ -237,7 +257,7 @@ Generalizable Deepfake Detection,” in 2024 IEEE/CVF Conference on
 Computer Vision and Pattern Recognition (CVPR), pp. 28130–28139,
 June 2024. ISSN: 2575-7075.
 
-[3] F. Laiti, B. Liberatori, T. De Min, and E. Ricci, “Conditioned Prompt-Optimization for Continual Deepfake Detection,” in Pattern Recognition(A. Antonacopoulos, S. Chaudhuri, R. Chellappa, C.L. Liu, S. Bhatacharya, and U. Pal, eds.), (Cham), pp. 64–79, Springer Nature Switzerland, 2025.
+[3] F. Laiti, B. Liberatori, T. De Min, and E. Ricci, “Conditioned Prompt-Optimization for Continual Deepfake Detection,” in Pattern Recognition (A. Antonacopoulos, S. Chaudhuri, R. Chellappa, C.L. Liu, S. Bhatacharya, and U. Pal, eds.), (Cham), pp. 64–79, Springer Nature Switzerland, 2025.
 
 [4] Dell'Anna, Stefano, Andrea Montibeller, and Giulia Boato. "TrueFake: A Real World Case Dataset of Last Generation Fake Images also Shared on Social Networks." arXiv preprint arXiv:2504.20658 (2025).
 
@@ -250,4 +270,3 @@ ISSN: 2379-190X.
 
 [7] M. Iuliani, M. Fontani, and A. Piva, “A leak in prnu based source
 identification—questioning fingerprint uniqueness,” IEEE Access, vol. 9, pp. 52455–52463, 2021.
-
