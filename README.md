@@ -20,7 +20,7 @@ This repository provides a unified framework for training, testing, and benchmar
 
 ### Prerequisites
 
-`Python>=3.10` and `CUDA:12.0`
+`Ubuntu>=22.04.3`, `Python>=3.10` and `CUDA:12.0`
 
 ---
 
@@ -210,7 +210,7 @@ Then, generate the corresponding `split.json` using `python support/json_compile
 Organize your data by platform and label:
 
 ```
-    demo_images/
+    <DATASET_NAME>/
             Facebook/
                     Fake/
                     Real/

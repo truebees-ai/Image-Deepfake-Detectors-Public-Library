@@ -1,7 +1,7 @@
 *.pth
 *.pt
 detectors/*/results/*
-venv_OS_library/
+venv_OS_library*/
 copy_images.sh
 split_demo.json
 detectors/*/checkpoint/gan2*
