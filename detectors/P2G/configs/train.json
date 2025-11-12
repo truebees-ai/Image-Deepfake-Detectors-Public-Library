@@ -13,7 +13,7 @@
     "precision" : "fp16",
     "dataset": "TrueFake",
     "task_name": ["gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre"],
-    "data_path": "/media/mmlab/Datasets_4TB/TrueFake/",
+    "data_path": "/media/NAS/DeepShield/",
     "split_file": "/home/andrea.montibeller/Image-Deepfake-Detectors-Public-Library/split.json",
     "multiclass": [0, 0, 0, 0, 0],
     "class_order": [0, 1],

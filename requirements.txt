@@ -1,17 +1,9 @@
 # ML / DL Frameworks
-# keras==3.3.3
-# tensorflow==2.16.1
 torch==2.4.0
 torchaudio==2.4.0          
 torchvision==0.19        
 
 # Hugging Face & Timm
-# ---
-# FIXED: Removed old, incompatible versions.
-# The versions below (e.g., transformers==4.25.1) are from 2022
-# and are NOT compatible with torch==2.3.1 (from 2024).
-# Pip will now find the latest compatible versions.
-# ---
 accelerate
 diffusers
 timm
@@ -19,10 +11,6 @@ transformers
 
 # ML/DL Helpers
 einops==0.8.0
-# mmengine==0.10.6 #2bcheck
-# torch-kmeans==0.2.0 #2bcheck
-# torchsr==1.0.4 #2bcheck
-# xformers #2bcheck
 
 # Data Science
 matplotlib==3.9.3
@@ -32,35 +20,13 @@ scikit-image==0.22.0
 scikit-learn==1.5.2
 sympy==1.13.3
 
-# Web / API / UI
-# altair==5.5.0 #2bcheck
-# fastapi==0.115.6 #2bcheck
-# Flask==3.0.3 #2bcheck
-# gradio        #2bcheck         # FIXED: Removed old version (3.40.0)
-# graphene==3.4.1 #2bcheck
-# gunicorn==23.0.0 #2bcheck
-# uvicorn==0.32.1 #2bcheck
-
 # MLOps & Infrastructure
-# databricks-sdk==0.36.0 #2bcheck
-# docker==7.1.0 #2bcheck
-# hydra-core==1.3.2 #2bcheck
-# mlflow==2.17.2 #2bcheck
-# sentry-sdk==2.19.0 #2bcheck
-# wandb==0.19.0 #2bcheck
+wandb==0.19.0 
 
 # Utilities
-# beautifulsoup4==4.12.3 #2bcheck
-# decord==0.6.0 #2bcheck
-# gdown==5.2.0 #2bcheck
-# GitPython==3.1.43 #2bcheck
 imageio==2.34.0 
-# pydub==0.25.1 #2bcheck
 PyYAML==6.0.2
-# SQLAlchemy==2.0.36 #2bcheck
 tqdm==4.67.1
-# txtorcon==23.11.0 #2bcheck
-# yapf==0.43.0 #2bcheck
 albumentations
 ftfy
 open-clip-torch
