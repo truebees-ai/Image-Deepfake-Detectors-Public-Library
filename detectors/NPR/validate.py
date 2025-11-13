@@ -11,7 +11,6 @@ from tqdm import tqdm
 def validate(model, data_loader):
     with torch.no_grad():
         y_true, y_pred = [], []
-        #for img, label, _ in data_loader:
         with tqdm(data_loader, unit='batch', mininterval=0.5) as tbatch:
             tbatch.set_description(f'Validation')
             for (img, label, _) in tbatch:

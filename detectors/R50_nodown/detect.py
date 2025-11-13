@@ -56,7 +56,7 @@ def main():
     
     # Load model
     try:
-                # Initialize model
+        # Initialize model
         model = create_architecture("res50nodown", pretrained=True, num_classes=1).to(device)
         load_path = f'./detectors/R50_nodown/checkpoint/{args.model}/weights/best.pt'
         

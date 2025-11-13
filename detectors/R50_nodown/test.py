@@ -95,10 +95,7 @@ def test(loader, model, settings, device):
         tpr = accuracy_score(all_labels[fake_mask], predictions[fake_mask])
     else:
         tpr = 0.0
-    
-    # TNR per dataset key (True Negative Rate) = TN / (TN + FP) = accuracy on real images (label==0)
-    tnr_per_dataset = {}
-    
+        
     # Calculate TNR on real images (label==0) in the test set
     real_mask = all_labels == 0
     if real_mask.sum() > 0:
@@ -106,14 +103,9 @@ def test(loader, model, settings, device):
         tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
     else:
         tnr = 0.0
-        
-        # Map TNR to training dataset keys (as shown in the example JSON structure)
-        # The TNR is calculated on the test set, but organized by training dataset keys
-        #for training_key in training_dataset_keys:
-        #    tnr_per_dataset[training_key] = overall_tnr
     
     # AUC calculation (needs probabilities, so we'll use sigmoid on scores)
-    if len(np.unique(all_labels)) > 1:  # Need both classes for AUC
+    if len(np.unique(all_labels)) > 1:  
         # Apply sigmoid to convert scores to probabilities
         probabilities = torch.sigmoid(torch.tensor(all_scores)).numpy()
         auc = roc_auc_score(all_labels, probabilities)

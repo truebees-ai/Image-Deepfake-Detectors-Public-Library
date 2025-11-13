@@ -321,7 +321,6 @@ def accuracy_binary(y_pred, y_true, increment=2):
 
 
 def prepare_model(args):
-    #checkpoint = torch.load(args["resume"], map_location=args["device"])
     checkpoint = torch.load(f'./checkpoint/{args["run_name"]}/weights/best.pt', map_location=args["device"])
     # update config args
     args["K"] = checkpoint["K"]
@@ -473,8 +472,6 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
     else:
         tpr = 0.0
     
-    # TNR per dataset key (True Negative Rate) = TN / (TN + FP) = accuracy on real images (label==0)
-    tnr_per_dataset = {}
     
     # Calculate TNR on real images (label==0) in the test set
     real_mask = all_binary_labels == 0
@@ -484,11 +481,6 @@ def inference_step(args, model: SliNet, test_loader, keys_dict):
     else:
         tnr = 0.0
         
-        # Map TNR to training dataset keys (as shown in the example JSON structure)
-        # The TNR is calculated on the test set, but organized by training dataset keys
-        #for training_key in training_dataset_keys:
-        #    tnr_per_dataset[training_key] = overall_tnr
-    
     # AUC calculation
     # For AUC, we need probabilities. Since predictions are binary (0/1), we'll use the scores
     # We need to convert binary predictions to probabilities. Since we don't have raw logits,
@@ -555,7 +547,4 @@ if __name__ == "__main__":
 
         test_loader = prepare_data_loader(args)
         inference_step(args, model, test_loader, keys_dict)
-        # if args["upperbound"] and s != "ood":
-        #     print(pretty_print(inference_step(args, model, test_loader, keys_dict)))
-        # if args["random_select"]:
-        #     print(pretty_print(inference_step(args, model, test_loader, keys_dict)))
+        

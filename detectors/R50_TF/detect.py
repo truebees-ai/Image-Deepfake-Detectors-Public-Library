@@ -12,8 +12,6 @@ import torchvision.transforms.v2 as Tv2
 
 from networks import ImageClassifier
 import sys
-# Add project root to path for imports (allow importing support utilities)
-# repo root: go up three levels from detectors/R50_TF/detect.py -> project root
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 from support.detect_utils import format_result, save_result, get_device
@@ -148,8 +146,6 @@ def run_inference(model, image_path, device):
 # ----------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description='Single image inference for R50_TF detector')
-    # Backwards-compatible flags: accept both --input/--checkpoint (original) and
-    # the standardized --image/--model used by the launcher support wrapper.
     parser.add_argument('--input', type=str, required=False, help='Path to input image (alias: --image)')
     parser.add_argument('--image', type=str, required=False, help='Path to input image (alias for --input)')
     parser.add_argument('--output', type=str, default='/tmp/result.json', help='Path to output JSON file')
@@ -164,13 +160,10 @@ def main():
     if args.image:
         args.input = args.image
 
-    # Determine checkpoint path: prefer explicit --checkpoint, else try to resolve
-    # from --model which is typically a directory name like 'pretrained'.
     checkpoint_path = None
     if args.checkpoint:
         checkpoint_path = args.checkpoint
     elif getattr(args, 'model', None):
-        # Try common layout: detectors/R50_TF/checkpoint/{model}/weights/best.pt
         detect_dir = os.path.dirname(os.path.abspath(__file__))
         candidate = os.path.join(detect_dir, 'checkpoint', args.model, 'weights', 'best.pt')
         if os.path.exists(candidate):

@@ -11,3 +11,4 @@ detection_results/*
 logs/*
 *.zip
 split_truefake.json
+IDFD_VENV/

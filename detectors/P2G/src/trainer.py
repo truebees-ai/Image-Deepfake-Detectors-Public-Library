@@ -27,7 +27,6 @@ def train(args):
     os.makedirs(f'./checkpoint/{args["run_name"]}/weights', exist_ok=True)
 
     _set_random(args)
-    #_set_device(args)
     print_args(args)
     
     data_manager = DataManager(
@@ -57,8 +56,6 @@ def train(args):
         model.after_task(data_manager.nb_tasks)
         model.save_checkpoint()
 
-    # compute_forgetting(model, acc_matrix)
-    # model.wandb_logger.finish()
 
 
 def _compute_AF(matrix):
@@ -78,7 +75,6 @@ def compute_forgetting(model: Prompt2Guard, acc_matrix):
     for k in acc_matrix.keys():
         forgetting = _compute_AF(acc_matrix[k])
         logging.info("Avg Forgetting of {}: {:.4f}".format(k, forgetting))
-        # model.wandb_logger.log({**{f"AF/{k}": forgetting}})
 
 
 def record_task_accuracy(

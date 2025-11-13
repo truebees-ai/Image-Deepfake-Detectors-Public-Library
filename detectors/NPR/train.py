@@ -26,14 +26,8 @@ def seed_torch(seed=1029):
     torch.backends.cudnn.enabled = False
 
 
-# # test config
-# vals = ['progan', 'stylegan', 'stylegan2', 'biggan', 'cyclegan', 'stargan', 'gaugan', 'deepfake']
-# multiclass = [1, 1, 1, 0, 1, 0, 0, 0]
-
-
 def get_val_opt():
     val_opt = TrainOptions().parse(print_options=False)
-    #val_opt.dataroot = '{}/{}/'.format(val_opt.dataroot, val_opt.val_split)
     val_opt.isTrain = False
     val_opt.no_resize = False
     val_opt.no_crop = False
@@ -45,39 +39,16 @@ def get_val_opt():
 if __name__ == '__main__':
     opt_train = TrainOptions().parse()
     seed_torch(100)
-    #Testdataroot = os.path.join(opt.dataroot, 'test')
-    #opt.dataroot = '{}/{}/'.format(opt.dataroot, opt.train_split)
-    #Logger(os.path.join(opt_train.checkpoints_dir, opt_train.name, 'log.log'))
+
     print('  '.join(list(sys.argv)) )
     opt_val = get_val_opt()
-    # Testopt = TestOptions().parse(print_options=False)
-    #opt_test = TestOptions().parse(print_options=False)
 
     train_loader = create_dataloader(opt_train, split='train')
     val_loader = create_dataloader(opt_val, split='val')
 
-    # train_writer = SummaryWriter(os.path.join(opt_train.checkpoints_dir, opt_train.name, "train"))
-    # val_writer = SummaryWriter(os.path.join(opt_train.checkpoints_dir, opt_train.name, "val"))
     
     model = Trainer(opt_train)
     
-    # def testmodel():
-    #     print('*'*25);
-    #     accs = [];
-    #     aps = []
-    #     print(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime()))
-    #     for v_id, val in enumerate(vals):
-    #         Testopt.dataroot = '{}/{}'.format(Testdataroot, val)
-    #         Testopt.classes = os.listdir(Testopt.dataroot) if multiclass[v_id] else ['']
-    #         Testopt.no_resize = False
-    #         Testopt.no_crop = True
-    #         acc, ap, _, _, _, _ = validate(model.model, Testopt)
-    #         accs.append(acc);aps.append(ap)
-    #         print("({} {:10}) acc: {:.1f}; ap: {:.1f}".format(v_id, val, acc*100, ap*100))
-    #     print("({} {:10}) acc: {:.1f}; ap: {:.1f}".format(v_id+1,'Mean', np.array(accs).mean()*100, np.array(aps).mean()*100));print('*'*25) 
-    #     print(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime()))
-
-    # model.eval();testmodel();
     model.train()
     print(f'cwd: {os.getcwd()}')
     for epoch in range(opt_train.niter):
@@ -105,10 +76,7 @@ if __name__ == '__main__':
         # Validation
         model.eval()
         acc, ap = validate(model.model, val_loader)[:2]
-        #val_writer.add_scalar('accuracy', acc, model.total_steps)
-        #val_writer.add_scalar('ap', ap, model.total_steps)
         print("(Val @ epoch {}) acc: {}; ap: {}".format(epoch, acc, ap))
-        #testmodel()
         model.train()
         if epoch == 0:
             model.save_networks('best')

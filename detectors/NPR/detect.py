@@ -59,10 +59,7 @@ def main():
             raise FileNotFoundError(f"Model weights not found at: {load_path}")
             
         checkpoint = torch.load(load_path, map_location=device)
-        #if 'model_state_dict' in checkpoint:
-        #    model.load_state_dict(checkpoint['model_state_dict'])
-        #else:
-        #    model.load_state_dict(checkpoint)
+
         model.load_state_dict(checkpoint, strict=True)
 
         model.eval()

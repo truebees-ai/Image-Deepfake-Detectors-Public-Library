@@ -28,29 +28,6 @@ def seed_torch(seed=1029):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.enabled = False
 seed_torch(100)
-# DetectionTests = {
-#                 'ForenSynths': { 'dataroot'   : '/opt/data/private/DeepfakeDetection/ForenSynths/',
-#                                  'no_resize'  : False, # Due to the different shapes of images in the dataset, resizing is required during batch detection.
-#                                  'no_crop'    : True,
-#                                },
-
-#            'GANGen-Detection': { 'dataroot'   : '/opt/data/private/DeepfakeDetection/GANGen-Detection/',
-#                                  'no_resize'  : True,
-#                                  'no_crop'    : True,
-#                                },
-
-#          'DiffusionForensics': { 'dataroot'   : '/opt/data/private/DeepfakeDetection/DiffusionForensics/',
-#                                  'no_resize'  : False, # Due to the different shapes of images in the dataset, resizing is required during batch detection.
-#                                  'no_crop'    : True,
-#                                },
-
-#         'UniversalFakeDetect': { 'dataroot'   : '/opt/data/private/DeepfakeDetection/UniversalFakeDetect/',
-#                                  'no_resize'  : False, # Due to the different shapes of images in the dataset, resizing is required during batch detection.
-#                                  'no_crop'    : True,
-#                                },
-
-#                  }
-
 
 opt = TestOptions().parse(print_options=False)
 opt.model_path = os.path.join(f'./checkpoint/{opt.name}/weights/best.pt')
@@ -151,9 +128,6 @@ if fake_mask.sum() > 0:
 else:
     tpr = 0.0
 
-# TNR per dataset key (True Negative Rate) = TN / (TN + FP) = accuracy on real images (label==0)
-tnr_per_dataset = {}
-
 # Calculate TNR on real images (label==0) in the test set
 real_mask = all_labels == 0
 if real_mask.sum() > 0:
@@ -161,10 +135,6 @@ if real_mask.sum() > 0:
     tnr = accuracy_score(all_labels[real_mask], predictions[real_mask])
 else:
     tnr = 0.0
-    
-    # Map TNR to training dataset keys (as shown in the example JSON structure)
-    #for training_key in training_dataset_keys:
-    #    tnr_per_dataset[training_key] = overall_tnr
 
 # AUC calculation (using probabilities)
 if len(np.unique(all_labels)) > 1:  # Need both classes for AUC
@@ -200,20 +170,4 @@ print(f'  Accuracy: {total_accuracy:.4f}')
 print(f'  AUC: {auc:.4f}')
 print(f'  Execution time: {execution_time:.2f} seconds')
 
-
-# for testSet in DetectionTests.keys():
-#     dataroot = DetectionTests[testSet]['dataroot']
-#     printSet(testSet)
-
-#     accs = [];aps = []
-#     print(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime()))
-#     for v_id, val in enumerate(os.listdir(dataroot)):
-#         opt.dataroot = '{}/{}'.format(dataroot, val)
-#         opt.classes  = '' #os.listdir(opt.dataroot) if multiclass[v_id] else ['']
-#         opt.no_resize = DetectionTests[testSet]['no_resize']
-#         opt.no_crop   = DetectionTests[testSet]['no_crop']
-#         acc, ap, _, _, _, _ = validate(model, opt)
-#         accs.append(acc);aps.append(ap)
-#         print("({} {:12}) acc: {:.1f}; ap: {:.1f}".format(v_id, val, acc*100, ap*100))
-#     print("({} {:10}) acc: {:.1f}; ap: {:.1f}".format(v_id+1,'Mean', np.array(accs).mean()*100, np.array(aps).mean()*100));print('*'*25) 
 
