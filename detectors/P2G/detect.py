@@ -58,10 +58,11 @@ def main():
         return
 
     # Resolve model checkpoint path (allow passing relative path or None)
-    #if args.model is None:
-    model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checkpoint', 'pretrained', 'weights', 'best.pt')
-    #else:
-    #    model_path = args.model if os.path.isabs(args.model) else os.path.join(os.path.dirname(os.path.abspath(__file__)), args.model)
+    if args.model is None:
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checkpoint', 'pretrained', 'weights', 'best.pt')
+    else:
+        breakpoint()
+        model_path = args.model if os.path.isabs(args.model) else os.path.join(os.path.dirname(os.path.abspath(__file__)), args.model)
 
     if not os.path.exists(model_path):
         print(f"Model checkpoint not found: {model_path}")

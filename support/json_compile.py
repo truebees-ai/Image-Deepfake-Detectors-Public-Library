@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, random_split
 import json
 import bisect
 
-dataset_path = os.path.join(os.sep, 'media', 'NAS', 'DeepShield') 
+dataset_path = os.path.join(os.sep, 'path', 'to', 'dataset') 
 
 datasets = []
 for dataset_root, dataset_dirs, dataset_files in os.walk(os.path.join(dataset_path), topdown=True, followlinks=True):

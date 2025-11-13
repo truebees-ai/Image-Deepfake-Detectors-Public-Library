@@ -76,7 +76,7 @@ def run_demo(args):
     # Build split file from demo_images
     def build_demo_split_json(root_path, out_path):
         test_entries = []
-        for mod in ['PreSocial', 'Facebook', 'Telegram', 'Twitter']:
+        for mod in ['PreSocial', 'Facebook', 'Telegram', 'X']:
             mod_path = os.path.join(root_path, mod)
             if not os.path.isdir(mod_path):
                 continue
@@ -185,7 +185,7 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Launcher for deepfake detector training and testing')
     parser.add_argument('--detector', type=str, required=False,
-                        choices=['R50_TF', 'R50_nodown', 'CLIP-D', 'MISLNet', 'P2G', 'NPR'],
+                        choices=['R50_TF', 'R50_nodown', 'CLIP-D', 'P2G', 'NPR'],
                         help='Detector to use')
     parser.add_argument('--phases', type=str, default='both',
                         choices=['train', 'test', 'both'],

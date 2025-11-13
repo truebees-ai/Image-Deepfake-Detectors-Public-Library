@@ -194,7 +194,7 @@ And supported pairs of `(key, social)` are:
 'tw': [X Social]
 ```
 
-Then, generate the corresponding `split.json` using `python support/json_compile.py` and use it to replace `./split.json`.
+Then, generate the corresponding `split.json` using `python support/json_compile.py` and use it to replace `./split.json`. NOTE: change line 9 `dataset_path=...` in `support/json_compile.py` accordingly. 
 
 ## Results & Logs
 
@@ -225,7 +225,7 @@ Organize your data by platform and label:
                     Real/
 ```
 
-Generate the corresponding `split.json` using `python support/json_compile.py` and use it to replace `./split.json`.
+Generate the corresponding `split.json` using `python support/json_compile.py` and use it to replace `./split.json`. NOTE: change line 9 `dataset_path=...` in `support/json_compile.py` accordingly. 
 
 ### Split Files
 

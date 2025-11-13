@@ -5,8 +5,25 @@ import yaml
 import subprocess
 from datetime import datetime
 
+def get_gpus():
+    from numpy import argwhere, asarray, diff
+    import re
+    smi = os.popen('nvidia-smi').readlines()
+    div = re.compile('[+]-{3,}[+]|[|]={3,}[|]')
+    dividers = argwhere([div.match(line) != None for line in smi])[-2:, 0]
+    processes = [line for line in smi[dividers[0]+1:dividers[1]] if ' C ' in line]
+    free = list(set([process.split()[1] for process in processes]) ^ set([str(0), str(1)]))
 
-    
+    udiv = re.compile('[|]={3,}[+]={3,}[+]={3,}[|]')
+    ldiv = re.compile('[+]-{3,}[+]-{3,}[+]-{3,}[+]')
+    divider_up = argwhere([udiv.match(line) != None for line in smi])[0,0]
+    divider_down = argwhere([ldiv.match(line) != None for line in smi])[-1, 0]
+
+    gpus = [line for line in smi[divider_up+1:divider_down] if '%' in line and 'MiB' in line]
+    gpus = [gpu.split('|')[2].replace(' ', '').replace('MiB', '').split('/') for gpu in gpus]
+    memory = diff(asarray(gpus).astype(int), axis=1).squeeze()
+
+    return free, memory
 
 def load_config(config_path):
     """Load configuration from YAML file."""
