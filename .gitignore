@@ -12,3 +12,4 @@ logs/*
 *.zip
 split_truefake.json
 IDFD_VENV/
+detectors/P2G/logs/*
