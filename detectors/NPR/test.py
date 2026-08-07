@@ -4,7 +4,7 @@ import os
 import csv
 import torch
 import json
-from util import Logger, printSet
+from util import Logger, printSet, create_logger
 from validate import validate
 from networks.resnet import resnet50
 from options.test_options import TestOptions
@@ -13,9 +13,12 @@ import numpy as np
 import random
 from data import create_dataloader
 from sklearn.metrics import roc_auc_score, accuracy_score
+from data.tf2k_dataset import tf2k_create_dataloader
 
 from tqdm import tqdm
 import pandas as pd
+
+from datetime import datetime
 
 def seed_torch(seed=1029):
     random.seed(seed)
@@ -30,7 +33,11 @@ def seed_torch(seed=1029):
 seed_torch(100)
 
 opt = TestOptions().parse(print_options=False)
-opt.model_path = os.path.join(f'./checkpoint/{opt.name}/weights/best.pt')
+if opt.ft:
+    _dataset_name = opt.dataset.replace(os.sep, '_') if getattr(opt, 'dataset', None) else 'dataset'
+    opt.model_path = os.path.join('checkpoint', opt.name, 'ft_weights', _dataset_name, 'best.pt')
+else:
+    opt.model_path = os.path.join('checkpoint', opt.name, 'weights', 'best.pt')
 print(f'Model_path {opt.model_path}')
 
 
@@ -43,17 +50,32 @@ model.eval()
 opt.no_resize = False
 opt.no_crop   = True
 
-output_dir = f'./results/{opt.name}/data/{opt.data_keys}'
+# output_dir = f'./results/{opt.name}/data/{opt.data_keys}'
+# os.makedirs(output_dir, exist_ok=True)
+
+# --------------------------- #
+# File paths update
+# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # add timestamp to test run
+# output_dir = f'./results/{settings.name}/data_{timestamp}/{settings.data_keys}'
+# dataset_dir_name = opt.data_root.split('/')[-1]  # Extract dataset directory name from path
+# tag = 'ft' if opt.ft else 'pretrained'
+# output_dir = f'/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/results/{opt.name}/{dataset_dir_name}/NPR_{tag}/{opt.data_keys}' # change path to be outside detector folder
+# os.makedirs(output_dir, exist_ok=True)
+# --------------------------- #
+dataset_dir_name = opt.data_root.split('/')[-1]  # Extract dataset directory name from path
+print(f"dataset_name: {dataset_dir_name}")
+tag = 'ft' if opt.ft else 'pretrained'
+# tag += '_unfreezeL4' if opt.r50unfreezeL4 else ''
+print(f"test_tag: {tag}")
+# breakpoint()
+# if dataset_dir_name in ['Facebook', 'Telegram', 'Twitter']:
+if any(sub in str(opt.data_root) for sub in ['Facebook', 'Telegram', 'Twitter']):
+    output_base = f'/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/results/{opt.name}_social/{dataset_dir_name}/NPR_{tag}/'
+else:
+    output_base = f'/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/results/{opt.name}/{dataset_dir_name}/NPR_{tag}/'
+output_dir = os.path.join(output_base, opt.data_keys) # change path to be outside detector folder
 os.makedirs(output_dir, exist_ok=True)
-
-test_dataloader = create_dataloader(opt, split='test')
-
-model.eval()
-
-# File paths
-csv_filename = os.path.join(output_dir, 'results.csv')
-metrics_filename = os.path.join(output_dir, 'metrics.json')
-image_results_filename = os.path.join(output_dir, 'image_results.json')
+    # --------------------------- #
 
 # Extract training dataset keys from model name (format: "training_keys_freeze_down" or "training_keys")
 training_dataset_keys = []
@@ -66,6 +88,28 @@ if '&' in training_name:
     training_dataset_keys = training_name.split('&')
 else:
     training_dataset_keys = [training_name]
+
+logger = create_logger(os.path.join(output_base, 'test_log.txt'))
+logger.info("=== Test settings ===")
+logger.info(f"Model name: {opt.name}_{tag}")
+logger.info(f"Model path: {opt.model_path}")
+logger.info(f"Dataset: {dataset_dir_name}")
+logger.info(f"Data keys: {opt.data_keys}")
+logger.info(f"Training dataset keys: {training_dataset_keys}")
+
+
+# if opt.tf2k:
+#     test_dataloader = tf2k_create_dataloader(opt, split = 'test')
+# else:
+
+test_dataloader = create_dataloader(opt, split='test')
+
+model.eval()
+
+# File paths
+csv_filename = os.path.join(output_dir, 'results.csv')
+metrics_filename = os.path.join(output_dir, 'metrics.json')
+image_results_filename = os.path.join(output_dir, 'image_results.json')
 
 # Collect all results
 all_scores = []
@@ -170,4 +214,11 @@ print(f'  Accuracy: {total_accuracy:.4f}')
 print(f'  AUC: {auc:.4f}')
 print(f'  Execution time: {execution_time:.2f} seconds')
 
-
+logger.info(f"Metrics saved to {metrics_filename}")
+logger.info(f"Image results saved to {image_results_filename}")
+logger.info(f"Metrics:")
+logger.info(f"  TPR: {tpr:.4f}")
+logger.info(f"  TNR: {tnr:.4f}")
+logger.info(f"  Accuracy: {total_accuracy:.4f}")
+logger.info(f"  AUC: {auc:.4f}")
+logger.info(f"  Execution time: {execution_time:.2f} seconds")

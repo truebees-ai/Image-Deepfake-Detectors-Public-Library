@@ -21,5 +21,22 @@ def get_parser():
 
     parser.add_argument("--num_epoches", type=int, default=1000, help="# of epoches at starting learning rate")
     parser.add_argument("--earlystop_epoch", type=int, default=5, help="Number of epochs without loss reduction before lowering the learning rate")
+
+    # ----------------------------------- #
+    # add ft flag
+    parser.add_argument('--ft', action='store_true', help='Path to pretrained model to load')
+
+    # add tf2k flag
+    parser.add_argument('--tf2k', type = bool, default = False, help = 'Use 2k dataset and splits for training and testing')
+    
+    # add dataset flag
+    parser.add_argument('--dataset', type = str, default = 'dataset', help = 'Which dataset to use (default: dataset)') # add custom dataset for demo
+
+    # add MLP flag
+    parser.add_argument('--mlp', action = 'store_true', help = 'If true add MLP head to CLIP-D')
+    parser.add_argument('--mlp_hidden',  type=int,   default=256)
+    parser.add_argument('--mlp_dropout', type=float, default=0.3)
+    parser.add_argument('--resume', action='store_true', help='Resume training from the last saved per-epoch checkpoint in the run\'s checkpoint dir')
+    # ----------------------------------- #
     
     return parser

@@ -1,4 +1,3 @@
-
 import os
 import subprocess
 import time
@@ -70,9 +69,13 @@ def run_demo(args):
     import torch
 
     project_root = os.path.abspath(os.path.dirname(__file__))
-    demo_root = os.path.join(project_root, 'demo_images')
-    assert os.path.isdir(demo_root), f"Demo folder not found: {demo_root}"
 
+    # if 'tb_preset' in args.demo_dataset:
+    
+    demo_root = os.path.join(project_root, 'demo_images', args.demo_dataset) #'tb_preset', 'style_BW01') # path to the dataset folder (socials subfolder structure)
+    assert os.path.isdir(demo_root), f"Demo folder not found: {demo_root}"
+    print(f"[demo] Using demo dataset at: {demo_root}")
+    # breakpoint()
     # Build split file from demo_images
     def build_demo_split_json(root_path, out_path):
         test_entries = []
@@ -133,6 +136,7 @@ def run_demo(args):
 
     detectors_root = os.path.join(project_root, 'detectors')
     all_methods = ['R50_nodown', 'CLIP-D', 'R50_TF', 'P2G', 'NPR']
+    # missing R50_TF and P2G results
     methods = all_methods if args.demo_detector == 'all' else [args.demo_detector]
 
     os.makedirs(os.path.join(project_root, 'logs'), exist_ok=True)
@@ -152,9 +156,10 @@ def run_demo(args):
         config = load_config(config_path) if os.path.exists(config_path) else {}
         detector_args = config.get('detector_args', [])
         testing_keys = config.get('testing', []) or ['all:all']
-        global_cfg = config.get('global', {})
-        num_threads = global_cfg.get('num_threads', 8)
 
+        global_cfg = config.get('global', {})
+        # num_threads = global_cfg.get('num_threads', 8)
+        num_threads = global_cfg.get('num_threads', 4) # lowered num of workers to 4 to fit requirements of T4 vm (warning)
         for data_keys in testing_keys:
             args_list = [
                 f'--name "{name}"',
@@ -173,6 +178,7 @@ def run_demo(args):
                 os.chdir(det_dir)
                 try:
                     print(f"[demo] Running {method} test with args: {cmd_args}")
+                    # breakpoint()
                     runner = 'test.py'
                     subprocess.run(f'python -u {runner} {cmd_args}', shell=True)#, stdout=f, stderr=f)
                 finally:
@@ -192,20 +198,43 @@ def main():
                         help='Phases to run: train, test, or both (default: both)')
     parser.add_argument('--config-dir', type=str, default='configs',
                         help='Path to configs directory (default: configs/)'),
-    parser.add_argument('--weights_name', type=str, default=None, 
+    parser.add_argument('--weights-name', type=str, default='pretrained', 
                         help='Name of the weights directory')
+    # --------------------------- #
+    # parser.add_argument('--split', type=str, default='./test2k_splits.json', 
+    #                     help='Path to trn-val-tst split file')
+    # --------------------------- #
+    parser.add_argument('--ft', action = 'store_true', help = 'Path to pretrained model to load') ## for FT model (os just --ft flag?)
+    parser.add_argument('--tf2k', type = bool, default = False, help = 'Use 2k dataset and splits for training and testing') ## for FT model (os just --ft flag?)
+    parser.add_argument('--r50unfreezeL4', action='store_true', help='Unfreeze layer 4 when FT ResNet models')
+    parser.add_argument('--resume', action='store_true', help='Resume training from the last saved per-epoch checkpoint in the run\'s checkpoint dir')
+    # --------------------------- #
     parser.add_argument('--demo', action='store_true', help='Run demo on demo_images across detectors')
+    # --------------------------- #
+    parser.add_argument('--dataset', type = str, default = 'dataset', help = 'Which dataset to use (default: dataset)') # add custom dataset for demo
+    parser.add_argument('--data_root', type = str,  help = 'Path to dataset')
+    parser.add_argument('--mlp', action = 'store_true', help = 'If true add MLP head to CLIP-D')
+    parser.add_argument('--mlp_hidden',  type=int,   default=256)
+    parser.add_argument('--mlp_dropout', type=float, default=0.3)
+    parser.add_argument('--social', type = str, help = 'Which dataset from a social to load (default: niet)') # add custom dataset for demo
+    # --------------------------- #
     parser.add_argument('--demo-detector', type=str, default='all', choices=['all', 'R50_TF', 'R50_nodown', 'CLIP-D', 'P2G', 'NPR'], help='Which detector to demo (default: all)')
     
     # Add detect mode arguments
     detect_group = parser.add_argument_group('detect', 'Single image detection options')
     detect_group.add_argument('--detect', action='store_true', help='Run single image detection mode')
-    detect_group.add_argument('--image', type=str, help='Path to image file for detection')
+    detect_group.add_argument('--image', type=str, help='Path to image file for detectionpython3 ')
     detect_group.add_argument('--weights', type=str, default='pretrained', help='Path to model weights for detection')
     detect_group.add_argument('--output', type=str, help='Path to save detection results')
     detect_group.add_argument('--dry-run', action='store_true', help='Print commands without executing')
+
+    #  python launcher.py --detect --detector model_name --image path/to/img.jpg --weights pretrained or demo
+    #  python3 launcher.py --detector R50_nodown --phases train --weights-name pretrained --ft # FT test 
     
     args = parser.parse_args()
+
+    # print(f"args: {args}")
+    # breakpoint()
 
     if args.demo:
         return run_demo(args)
@@ -230,19 +259,87 @@ def main():
     
     # Extract configuration values
     global_config = config.get('global', {})
-    dataset_path = global_config.get('dataset_path')
+
+    
+
+    # get tf dataset path
+
+    config_dataset_path = global_config.get('dataset_path')
+    
+    if  args.social:
+    # if 'facebook' in args.dataset or 'telegram' in args.dataset or 'twitter' in args.dataset:
+            args.tf2k = True # used to remove mod from dataset preprocessing
+            print(f"Dataset TF2K: setting --tf2k flag to True")
+            print(f"loading social data - {args.social} - {args.dataset}")
+            print(args.dataset)
+            # /dataset-disk/tb_dataset/tf2k_lr/social
+            dataset_path = os.path.join(global_config.get('dataset_path', ''), 'social', args.social, args.dataset)
+            split_file = '/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/tf2k_SOCIAL_splits.json'
+
+    elif 'seasons' in args.dataset or 'style' in args.dataset or 'adaptive' in args.dataset or 'subject' in args.dataset:
+            args.tf2k = True # used to remove mod from dataset preprocessing
+            print(f"Dataset TF2K: setting --tf2k flag to True")
+            print(args.dataset)
+            # /dataset-disk/tb_dataset/tf2k_lr/tf_dataset
+            dataset_path = os.path.join(global_config.get('dataset_path', ''), 'tf_dataset', args.dataset)
+            # dataset_path = os.path.join(global_config.get('dataset_path', ''), 'tf2k_lr_org', args.dataset)
+            split_file = os.path.abspath(global_config.get('split_file', 'test2k_splits.json'))
+
+    elif 'Facebook' in args.dataset or 'Telegram' in args.dataset or 'Twitter' in args.dataset:
+            args.tf2k = True # used to remove mod from dataset preprocessing
+            print(f"Dataset TF2K: setting --tf2k flag to True")
+            print(f"loading social data - {args.social} - {args.dataset}")
+            print(args.dataset)
+            # /dataset-disk/tb_dataset/test_split_social
+            dataset_path = os.path.join('/dataset-disk/tb_dataset/test_split_social', args.dataset)
+            split_file = '/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/tf2k_SOCIAL_splits.json'
+    # elif 'tf2k_social' in config_dataset_path:
+    #     args.tf2k = True # used to remove mod from dataset preprocessing
+    #     print(f"Dataset TF2K: setting --tf2k flag to True")
+    #     print(args.dataset)
+    #     dataset_path = os.path.join(global_config.get('dataset_path', ''), 'tf2k_social', args.dataset)
+    else:
+        # dataset_path = os.path.join(config_dataset_path, args.dataset)
+        dataset_path = '/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/truefake_2k/dataset'
+        args.tf2k = True
+        split_file = os.path.abspath(global_config.get('split_file', 'test2k_splits.json'))
+            #global_config.get('dataset_path', args.dataset) # default to --dataset argument if not specified in config
+    print(f"Using dataset path: {dataset_path}")
+    # breakpoint()
+
+    
     device_override = global_config.get('device_override')  # Can be None
     if args.weights_name is not None:
         global_config['name'] = args.weights_name
-    else:
+    else: 
         global_config['name'] = config.get('training', [])[0]['data']
     model_name = global_config.get('name')
     # Handle string "null" as None
     if device_override == "null" or device_override == "":
         device_override = None
     min_vram = global_config.get('min_vram', 16000)
-    split_file = os.path.abspath(global_config.get('split_file', 'split.json'))
-    num_threads = global_config.get('num_threads', 8)
+
+    # -------------------------- #
+    # old way to load split for FT
+    # if args.ft:
+    #     split_file = '/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/tf2k_dataset_splits.json'
+    #     #'/media/data/TB_WP3/Image-Deepfake-Detectors-Public-Library/split_hc.json'
+    #     # os.path.abspath(global_config.get('split_file', 'split_hc.json'))
+        
+    # else: 
+    #     split_file = os.path.abspath(global_config.get('split_file', 'split.json'))
+    # --------------------------- #
+    # Baseline test and FT on 2k data -> fix new splits
+    # split_file = '/home/rz/TB_WP3/Image-Deepfake-Detectors-Public-Library/tf2k_dataset_splits.json'
+    # if args.split:
+    #     split_file = args.split
+    #     print(f"split: {split_file}")
+    # else:
+    #     split_file = os.path.abspath(global_config.get('split_file', 'test2k_splits.json'))
+    # # print(f"split_file: {split_file}")
+    # breakpoint()
+    
+    num_threads = global_config.get('num_threads', 8) # check if ok for TeslaT4, might need to decrease it to 4
     dry_run = global_config.get('dry_run', False)
     only_list = global_config.get('only_list', False)
     phases = parse_phases(args.phases)
@@ -250,6 +347,10 @@ def main():
     detector_args = config.get('detector_args', [])
     training_configs = config.get('training', [])
     test_list = config.get('testing', [])
+
+    print(f"training_configs: {training_configs}")
+    print(f"test_list: {test_list}")
+    # breakpoint()
     
     os.makedirs('logs', exist_ok=True)
     
@@ -281,8 +382,32 @@ def main():
         cmd_args.append(f'--task {task["type"]}')
         cmd_args.append(f'--num_threads {num_threads}')
         cmd_args.append(f'--data_keys "{task["details"]["data"]}"')
-        cmd_args.append(f'--data_root {dataset_path}')
+        # cmd_args.append(f'--data_root {dataset_path}')
+        cmd_args.append(f'--dataset {args.dataset}')
+
+        if args.data_root:
+            cmd_args.append(f'--data_root {args.data_root}')
+        else:
+            cmd_args.append(f'--data_root {dataset_path}')
         
+        if args.tf2k:
+            cmd_args.append(f'--tf2k {args.tf2k}') # pass tf2k flag to train/test scripts for correct dataset handling
+
+        if args.ft: 
+                cmd_args.append(f'--ft')
+
+        if args.r50unfreezeL4:
+            cmd_args.append(f'--r50unfreezeL4')
+
+        if args.mlp:
+            cmd_args.append(f'--mlp')
+
+        if args.resume:
+            cmd_args.append(f'--resume')
+
+        if args.social:
+            cmd_args.append(f'--social {args.social}')
+
         device = None
         if device_override is not None:
             device = device_override
@@ -300,6 +425,9 @@ def main():
         
         cmd_args.append(f'--device {device}')
         
+        print(f"cmd_args: {cmd_args}")
+        # breakpoint()
+
         # Add detector-specific arguments
         for arg in detector_args:
             cmd_args.append(arg)
@@ -310,6 +438,10 @@ def main():
         if not dry_run:
             #log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{task["details"]["model"]}_{task["details"]["data"]}.log'
             log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{model_name}_{task["details"]["data"]}.log'
+            if args.ft:
+                log_file = f'logs/FT_{task["details"]["detector"]}_{model_name}_seasonTM01.log'
+            else:
+                log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{model_name}_{task["details"]["data"]}.log'
             with open(log_file, 'w') as f:
                 cwd = os.getcwd()
                 os.chdir(f'./detectors/{task["details"]["detector"]}')

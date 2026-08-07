@@ -35,14 +35,19 @@ def make_processing(opt):
         if transforms_post is not None:
             transforms_list.append(transforms_post)
 
-    if opt.task == 'test' and 'realFORLAB:pre' in opt.data_keys:
-        transforms_list.append(Tv2.CenterCrop(1024)) 
-    if opt.task == 'test' and 'realFORLAB:fb' in opt.data_keys:
-        transforms_list.append(Tv2.CenterCrop(720)) 
-    if opt.task == 'test' and 'realFORLAB:tw' in opt.data_keys:
-        transforms_list.append(Tv2.CenterCrop(1200)) 
-    if opt.task == 'test' and 'realFORLAB:tl' in opt.data_keys:
-        transforms_list.append(Tv2.CenterCrop(800)) 
+    if opt.task == 'test':
+        # Apply CenterCrop based on platform suffix if present
+        if 'realFORLAB:pre' in opt.data_keys:
+            transforms_list.append(Tv2.CenterCrop(1024))
+        elif 'realFORLAB:fb' in opt.data_keys:
+            transforms_list.append(Tv2.CenterCrop(720))
+        elif 'realFORLAB:tw' in opt.data_keys:
+            transforms_list.append(Tv2.CenterCrop(1200))
+        elif 'realFORLAB:tl' in opt.data_keys:
+            transforms_list.append(Tv2.CenterCrop(800))
+        elif 'realFORLAB' in opt.data_keys:
+            transforms_list.append(Tv2.CenterCrop(1024))
+    
     transforms_list.append(make_normalize(opt))  # make normalization
 
     return Tv2.Compose(transforms_list)
@@ -72,7 +77,7 @@ def add_processing_arguments(parser):
     parser.add_argument("--resize_ratio", type=float, default=1.0)
 
     # other
-    parser.add_argument("--norm_type", type=str, default="resnet")  # normalization type
+    parser.add_argument("--norm_type", type=str, default="resnet")  # normalization type (248x248)
 
     return parser
 

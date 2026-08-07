@@ -119,27 +119,51 @@ class TrueFake_dataset(datasets.DatasetFolder):
         with open(settings.split_file, "r") as f:
             split_list = sorted(json.load(f)[self.split])
         
+        
         dataset_list = parse_dataset(settings)
+
+        print(f"\tR50_nodown - dataset.py - dataset_list: {dataset_list}")
+        breakpoint()    
         
         self.samples = []
         self.info = []
         for dict in dataset_list:
             generators = dict['gen']
-            modifiers = dict['mod']
-
+            modifiers = dict['mod'] if 'mod' in dict.keys() else None
+            print(f"\n\tR50_nodown - dataset.py - generators: {generators}, modifiers: {modifiers}")
+            # breakpoint()
             for mod in modifiers:
-                for dataset_root, dataset_dirs, dataset_files in os.walk(os.path.join(self.data_root, mod), topdown=True, followlinks=True):
+                mod_root = os.path.join(self.data_root, mod)
+                print(f"\n\tR50_nodown - dataset.py - mod_root: {mod_root}")
+                for dataset_root, dataset_dirs, dataset_files in os.walk(mod_root, topdown=True, followlinks=True):
                     if len(dataset_dirs):
                         continue
 
-                    (label, gen, sub)  = f'{dataset_root}/'.replace(os.path.join(self.data_root, mod) + os.sep, '').split(os.sep)[:3]
-                    
-                    if gen in generators:
-                        for filename in sorted(dataset_files):
-                            if os.path.splitext(filename)[1].lower() in ['.png', '.jpg', '.jpeg']:
-                                if self._in_list(split_list, os.path.join(gen, sub, os.path.splitext(filename)[0])):
-                                    self.samples.append(os.path.join(dataset_root, filename))
-                                    self.info.append((mod, label, gen, sub))
+                    # Compute path relative to mod root, e.g.:
+                    #   Real/FFHQ (2 parts — no sub, Real images)
+                    #   Fake/StyleGAN3/conf-t (3 parts — has sub, Fake images)
+                    rel = os.path.relpath(dataset_root, mod_root)
+                    parts = rel.split(os.sep)
+                    if len(parts) < 2:
+                        continue
+
+                    label, gen = parts[0], parts[1]
+                    sub = parts[2] if len(parts) > 2 else None
+
+                    if gen not in generators:
+                        continue
+
+                    for filename in sorted(dataset_files):
+                        if os.path.splitext(filename)[1].lower() not in ['.png', '.jpg', '.jpeg']:
+                            continue
+                        stem = os.path.splitext(filename)[0]
+                        # Key must match with test_json_split.py:
+                        #   gen/stem for Real  (e.g. "FFHQ/00098")
+                        #   gen/sub/stem for Fake  (e.g. "StyleGAN3/conf-t-psi-0.5/00098")
+                        key = os.path.join(gen, sub, stem) if sub else os.path.join(gen, stem)
+                        if self._in_list(split_list, key):
+                            self.samples.append(os.path.join(dataset_root, filename))
+                            self.info.append((mod, label, gen, sub))
 
         self.transform = make_processing(settings)
         print(self.transform)
@@ -153,11 +177,11 @@ class TrueFake_dataset(datasets.DatasetFolder):
     
     def __getitem__(self, index):
         path = self.samples[index]
-        mod, label, gen, sub = self.info[index]
+        mod, label, gen, sub = self.info[index]  # sub may be None for Real images
 
         sample = Image.open(path).convert('RGB')
         sample = self.transform(sample)
 
         target = 1.0 if label == 'Fake' else 0.0
-        
-        return {'img':sample, 'target':target, 'path':path}
+
+        return {'img': sample, 'target': target, 'path': path}

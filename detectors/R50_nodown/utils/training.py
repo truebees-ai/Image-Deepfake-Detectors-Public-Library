@@ -30,7 +30,8 @@ class TrainingModel(torch.nn.Module):
         self.total_steps = 0
         self.save_dir = (os.path.join('checkpoint', opt.name,'weights'))
         self.device = torch.device(opt.device if torch.cuda.is_available() else 'cpu')
-
+        print(f"opt.arch: {opt.arch}")
+        # breakpoint()
         self.model = create_architecture(opt.arch, pretrained=True,  num_classes=1)
         num_parameters = count_parameters(self.model)
         print(f"Arch: {opt.arch} with #trainable {num_parameters}")
@@ -40,6 +41,17 @@ class TrainingModel(torch.nn.Module):
         self.optimizer = torch.optim.Adam(parameters, lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
 
         self.model.to(self.device)
+
+    # def load_networks(self, checkpoint_path):
+    #     """Load model (and optionally optimizer) from a checkpoint."""
+    #     if not os.path.exists(checkpoint_path):
+    #         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+    #     state_dict = torch.load(checkpoint_path, map_location=self.device)
+
+    #     self.model.load_state_dict(state_dict['model'])
+    #     print(f"Loaded model weights from {checkpoint_path}")
+
 
     def adjust_learning_rate(self, min_lr=1e-6):
         for param_group in self.optimizer.param_groups:

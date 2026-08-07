@@ -14,3 +14,16 @@ split_truefake.json
 IDFD_VENV/
 detectors/P2G/logs/*
 v_gradio
+results/
+truefake_2k/*
+detectors/*/checkpoint/
+detectors/*/__pycache__/*
+detectors/*/*/__pycache__/*
+detectors/*/*/*/__pycache__/* 
+detectors/*/*/*/*/__pycache__/* 
+*/__pycache__/*
+optuna_studies/
+detectors/MISLNet/*
+utils/test_split_social/
+utils/tf_social_renamed/
+utils/utils/*
