@@ -1,8 +1,26 @@
 # Image Deepfake Detectors Public Library
 
+**Official version: 1.0**
+
 ## Overview
 
 This repository provides a unified framework for training, testing, and benchmarking multiple state-of-the-art (SoA) deepfake detection models. It supports automated benchmarking, training, demo runs, and single-image detection, with modular configuration and extensible detector support.
+
+## License
+
+The project-owned code and documentation are licensed under the [Apache License 2.0](LICENSE). Anyone may clone, run, use, modify, and redistribute that material under its terms. The official project version is recorded in [VERSION](VERSION).
+
+Bundled detectors retain their own licenses and copyright notices:
+
+| Detector | License |
+| --- | --- |
+| CLIP-D | [Apache License 2.0](detectors/CLIP-D/LICENSE) |
+| P2G | [MIT](detectors/P2G/LICENSE) |
+| R50_TF | [CC BY 4.0](detectors/R50_TF/LICENSE.md) |
+| R50_nodown | [Apache License 2.0](detectors/R50_nodown/LICENSE.md) |
+| NPR | [Apache License 2.0](detectors/NPR/LICENSE), applied with permission from its copyright holders |
+
+The root license does not replace detector-specific terms or grant rights to externally downloaded model weights and datasets.
 
 ### Main Features
 
