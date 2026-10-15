@@ -126,6 +126,13 @@ def run_demo(args):
         if not os.path.isdir(det_dir):
             continue
 
+        if method == 'P2G' and not str(device).startswith('cuda'):
+            message = f"[demo] P2G requires CUDA (device is {device})"
+            if args.demo_detector != 'all':
+                raise RuntimeError(message)
+            print(f"{message}; skipping")
+            continue
+
         recent = method in ('PGC', 'ForensicConcept', 'MDMF')
         run_name = args.weights_name or 'pretrained'
         preferred_weights = args.weights_name or './checkpoint/pretrained/weights/best.pt'
@@ -152,6 +159,9 @@ def run_demo(args):
                          '--num_threads', str(num_threads), *detector_args]
             if recent and args.batch_size:
                 args_list.extend(['--batch_size', str(args.batch_size)])
+            elif method in ('R50_TF', 'R50_nodown', 'CLIP-D', 'NPR'):
+                # Demo images have mixed sizes and these test loaders do not crop, so they cannot be batched.
+                args_list.extend(['--batch_size', '1'])
             log_file = os.path.join(project_root, 'logs', f'demo_{method}_{data_keys.replace(":","-")}.log')
             with open(log_file, 'w') as f:
                 print(f"[demo] Running {method} test with args: {shlex.join(args_list)}")

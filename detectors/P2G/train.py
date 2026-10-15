@@ -1,5 +1,6 @@
 from parser import get_parser
 import subprocess
+import sys
 
 if __name__ == "__main__":
     parser = get_parser()
@@ -19,4 +20,4 @@ if __name__ == "__main__":
         f.write(training_template)
         print("Train config file created")
 
-    subprocess.run(f'python -u src/train.py --config configs/train.json', shell=True)
+    subprocess.run([sys.executable, '-u', 'src/train.py', '--config', 'configs/train.json'], check=True)

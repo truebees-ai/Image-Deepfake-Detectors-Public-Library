@@ -1,315 +1,289 @@
 # Image Deepfake Detectors Public Library
 
-**Official version: 1.0**
+**Version 2.0** · Apache-2.0 (project code) · see [License](#license)
 
-## Overview
+One command-line interface to **train, test, and run** eight AI-generated-image detectors on the same data, with the same split and the same configuration format.
 
-This repository provides a unified framework for training, testing, and benchmarking multiple state-of-the-art (SoA) deepfake detection models. It supports automated benchmarking, training, demo runs, and single-image detection, with modular configuration and extensible detector support.
+| Detector | Type | Backbone | Ref. | CPU? | Published weights |
+|---|---|---|---|---|---|
+| `CLIP-D` | CLIP linear probe | CLIP ViT-L/14 | [1] | yes | manual download |
+| `NPR` | CNN, up-sampling traces | ResNet-50 | [2] | yes | manual download |
+| `P2G` | prompt tuning, continual | CLIP | [3] | **GPU only** | manual download |
+| `R50_TF` | ResNet-50 + prototypes | ResNet-50 | [4] | yes | manual download |
+| `R50_nodown` | ResNet-50 without down-sampling | ResNet-50 | [5] | yes | manual download |
+| `PGC` | peak-guided calibration | DINOv2-L | [8] | yes | `setup_recent_weights.py` |
+| `ForensicConcept` | CLIP codebook | CLIP ViT-L/14 | [9] | yes | `setup_recent_weights.py` |
+| `MDMF` | local distribution shift (MMD) | DINOv2-L | [10] | yes | `setup_recent_weights.py` + `prepare.py` |
 
-## License
+Detector names are case-sensitive. All commands are run **from the repository root**.
 
-The project-owned code and documentation are licensed under the [Apache License 2.0](LICENSE). Anyone may clone, run, use, modify, and redistribute that material under its terms. The official project version is recorded in [VERSION](VERSION).
+## Contents
 
-The root license does not replace detector-specific terms or grant rights to externally downloaded model weights and datasets.
-
-### Main Features
-
--   **Multiple Detectors:** Supports CLIP-D [1], NPR [2], P2G [3], R50_TF [4], and R50_nodown [5] (an overview for each method is provided in its `README.md`: `./detectors/<DETECTOR>/README.md`)
--   **Pretrained Weights:** All models have been pretrained on images generated with StyleGAN2 and StableDiffusionXL, and real images from the FFHQ Dataset [6] and the FORLAB Dataset [7].
--   **Automated Training & Testing:** Use `launcher.py` to run experiments across detectors and datasets.
--   **Demo Mode:** Easily test all detectors on sample images in `demo_images/`.
--   **Single Image Detection:** Run detection on individual images via the command line.
--   **Flexible Configuration:** All experiment parameters are set via YAML files in `configs/`.
--   **Logging & Results:** Logs and results are saved per detector and scenario for easy analysis.
-
----
-
-## Set-Up
-
-### Prerequisites
-
-`Ubuntu>=22.04.3`, `Python>=3.10` and `CUDA:12.0`
-
----
-
-### Download Weights
-
-You can download weights for the original five models from this [link](https://drive.google.com/file/d/1F60FN2B9skRcb3YrZwhFTZQihbj3ipJQ/view?usp=sharing). For PGC, ForensicConcept, and MDMF use the repeatable setup command in the [2026 open methods section](#2026-open-methods-pgc-forensicconcept-mdmf).
-
-Then, copy them into the `pretrained` folder for the corresponding model, following this structure: `./detectors/<DETECTOR>/checkpoint/pretrained/weights/best.pt`
+1. [Install](#1-install)
+2. [Get the data and split](#2-get-the-data-and-split)
+3. [Test the published (pretrained) weights](#3-test-the-published-pretrained-weights)
+4. [Train your own model](#4-train-your-own-model)
+5. [Smoke test on a tiny CPU dataset](#5-smoke-test-on-a-tiny-cpu-dataset)
+6. [Configuration](#6-configuration)
+7. [Custom generators and new datasets](#7-custom-generators-and-new-datasets)
+8. [Outputs](#8-outputs)
+9. [Troubleshooting](#9-troubleshooting)
+10. [License](#license) · [References](#references)
 
 ---
 
-### Download Benchmarking Dataset
+## 1. Install
 
-DeepShield Dataset: [Zenodo link](https://zenodo.org/records/15648378)
-
-Download the dataset and change the corresponding `dataset_path` in `./configs/<DETECTOR>.yaml`.
-
-> The DeepShield dataset is a large-scale benchmark for evaluating the robustness of fake image detection systems. It contains 100,000 images, divided between real and AI-generated content produced using advanced generative models, including StyleGAN, StyleGAN2, StyleGAN3, Stable Diffusion 1.5, 2.1, 3, and XL, as well as Flux 1.0.
->
-> To simulate real-world distortions, 30,000 images were shared on Facebook, X (formerly Twitter), and Telegram, then re-collected to include platform-induced compression and artifacts. This approach ensures that the dataset captures authentic distribution noise and artifacts encountered in real-world scenarios.
-
----
-
-### VirtualEnv
-
-Create a virtual environment using:
+Python 3.10+ is required. CUDA is optional (except P2G).
 
 ```bash
-python -m venv IDFD_VENV
-source IDFD_VENV/bin/activate
-pip install -r requirements.txt
-````
+git clone <this-repo-url> && cd Image-Deepfake-Detectors-Public-Library
+python -m venv .venv
+source .venv/bin/activate          # re-run in every new terminal
+python -m pip install -r requirements.txt
+```
 
-Or use conda:
+(`environment.yml` is provided for conda users.) The first run may download backbone files into your local model cache.
+
+## 2. Get the data and split
+
+The library uses the **DeepShield** dataset ([Zenodo](https://zenodo.org/records/15648378)). Layout:
+
+```text
+DeepShield/
+  PreSocial/{Real,Fake}/<generator>/...
+  Facebook/{Real,Fake}/<generator>/...
+  Telegram/{Real,Fake}/<generator>/...
+  X/{Real,Fake}/<generator>/...
+```
+
+> "TrueFake" is the historical name of this dataset ([4]); you will still see it in R50_TF's code and paper title.
+
+1. Point every config to the dataset. In **each** `configs/<DETECTOR>.yaml` set:
+
+   ```yaml
+   global:
+     dataset_path: /absolute/path/to/DeepShield
+     split_file: ./split.json
+   ```
+   One-liner for all configs: `sed -i 's|<PATH_TO_DATASET>|/absolute/path/to/DeepShield|' configs/*.yaml`
+
+2. **Use the `split.json` shipped in the repo** (70 040 train / 14 980 val / 14 980 test source IDs). Do **not** regenerate it if you want results comparable with other users or if you test pretrained weights. It lists source IDs, so the same file works for every detector.
+
+   Only for a *new* dataset, build a deterministic 70/15/15 split with
+   `python support/json_compile.py /path/to/dataset --output split.json` (seed 42, no overlap between sets).
+
+## 3. Test the published (pretrained) weights
+
+Testing a model = **install its weights as the run called `pretrained`**, then evaluate that run. No training is needed.
+
+### 3.1 Install the weights
+
+| Detector | How |
+|---|---|
+| `PGC`, `ForensicConcept`, `MDMF` | `python support/setup_recent_weights.py all` (or one name). Downloads checkpoints and backbones, verifies checksums, writes `weights-manifest.json`. No datasets are downloaded. |
+| `R50_TF`, `R50_nodown`, `CLIP-D`, `P2G`, `NPR` | Download the [checkpoint archive](https://drive.google.com/file/d/1F60FN2B9skRcb3YrZwhFTZQihbj3ipJQ/view?usp=sharing) and unzip it **at the repository root**: `unzip <archive>.zip -d .` (it already contains the `detectors/<MODEL>/checkpoint/pretrained/weights/best.pt` paths) |
+
+Check that it worked (8 files expected):
 
 ```bash
-conda env create -f environment.yml
-conda activate IDFD_VENV
+ls detectors/*/checkpoint/pretrained/weights/best.pt
 ```
 
------
-
-### Download Demo Dataset
-
-You can download the demo dataset from this [link](https://drive.google.com/file/d/134Bw8l9tEC7oZJpTAeMO80QRqgdJfJS9/view?usp=sharing). The demo dataset contains 200 images randomly sampled from the DeepShield Dataset.
-
-Place sample images for quick testing in `demo_images/`, organized by platform and label:
-
-```
-    demo_images/
-            Facebook/
-                    Fake/
-                    Real/
-            PreSocial/
-                    Fake/
-                    Real/
-            Telegram/
-                    Fake/
-                    Real/
-            X/
-                    Fake/
-                    Real/
-```
-
------
-
-## Running Experiments
-
-**1. Run Demo:**
-
-Test all detectors on sample images:
+**MDMF extra step.** Its `best.pt` does not contain the real-image reference bank or the calibrated threshold, so build them once from the *training-split real images* of the dataset you will test on:
 
 ```bash
-python launcher.py --demo --demo-detector all
-```
-
-Test a single detector on sample images:
-
-```bash
-python launcher.py --demo --demo-detector <DETECTOR>
-```
-
-**2. Automated Train-Test (Recommended) on DeepShield Dataset:**
-
-To run both train and test using a specific `<DETECTOR>`:
-
-```bash
-python launcher.py --detector <DETECTOR> --phases both
-```
-
-  - `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`, `PGC`, `ForensicConcept`, `MDMF`
-  - `--phases`: `train`, `test`, or `both`
-
-By doing so, the selected detector will be trained on images generated by StyleGAN2 and StableDiffusionXL and real images from the FORLAB and FFHQ Datasets, **not shared on social networks**.
-
-**3. Manual Train-Test on DeepShield Dataset:**
-
-```bash
-python launcher.py --detector <DETECTOR> --phases <PHASE> --config-dir <CONFIG_FILE_PATH> --weights_name <WEIGHTS_NAME>
-```
-
-  - `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`, `PGC`, `ForensicConcept`, `MDMF`
-  - `--phases`: `train`, `test`, or `both`
-  - `--config-dir`: Path to the detector config files (default: `configs/`)
-  - `--weights_name`: Model weights name. The default is defined in `configs/<DETECTOR>.yaml` by these lines:
-
-<!-- end list -->
-
-```
-training:
-  - data: gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre
-```
-
-This corresponds to the training subsets used to train a detector (see the "Train on Different Generators from the DeepShield Dataset" section for more information).
-
-**4. Test the model using pretrained weights on the DeepShield Dataset:**
-
-```bash
-python launcher.py --detector <DETECTOR> --phases test --weights_name pretrained
-```
-
-**5. Train the model using a custom weights name on the DeepShield Dataset:**
-
-```bash
-python launcher.py --detector <DETECTOR> --phases train --weights_name <WEIGHTS_NAME>
-```
-
-**6. Perform Detection on Single Images:**
-
-```bash
-python launcher.py --detect --detector <DETECTOR> --image <PATH_TO_IMAGE> --weights <WEIGHTS_NAME> --output <OUTPUT_PATH>
-```
-
-  - `<DETECTOR>`: One of `CLIP-D`, `NPR`, `P2G`, `R50_TF`, `R50_nodown`, `PGC`, `ForensicConcept`, `MDMF`
-  - `--image`: Path to the input image
-  - `--weights`: Weights name (default: `pretrained`)
-  - `--output`: Path to save detection results (default: `detection_results`)
-
------
-
-## Train on Different Generators from the DeepShield Dataset
-
-To train a detector on generators different from StyleGAN2 and StableDiffusionXL, modify these lines in `configs/<DETECTOR>.yaml`:
-
-```json
-training:
-  - data: gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre
-```
-
-Currently supported pairs of `(key, sub-dataset)` are:
-
-```
-'gan1':['StyleGAN']
-'gan2':['StyleGAN2']
-'gan3':['StyleGAN3']
-'sd15':['StableDiffusion1.5']
-'sd2':['StableDiffusion2']
-'sd3':['StableDiffusion3']
-'sdXL':['StableDiffusionXL']
-'flux':['FLUX.1']
-'realFFHQ':['FFHQ']
-'realFORLAB':['FORLAB']
-```
-
-And supported pairs of `(key, social)` are:
-
-```
-'pre':[Not Shared on Social Networks],
-'fb': [Facebook]
-'tl': [Telegram]
-'tw': [X Social]
-```
-
-Then generate `split.json` with `python support/json_compile.py /path/to/dataset --output split.json`.
-
-## Results & Logs
-
-  - **Results:** Saved in `detectors/<DETECTOR>/results/`
-  - **Logs:** Saved in `logs/` per run and scenario
-
------
-
-## Train/Test on a New Dataset
-
-### Data Organization
-
-Organize your data by platform and label:
-
-```
-    <DATASET_NAME>/
-            Facebook/
-                    Fake/
-                    Real/
-            PreSocial/
-                    Fake/
-                    Real/
-            Telegram/
-                    Fake/
-                    Real/
-            X/
-                    Fake/
-                    Real/
-```
-
-Generate `split.json` with `python support/json_compile.py /path/to/dataset --output split.json`.
-
-### Split Files
-
-  - **`split.json`:** Main split file for experiments. Format: JSON with `train`/`val`/`test` keys and lists of source IDs.
-  - **`split_demo.json`:** Auto-generated for demo mode, covering all images in `demo_images/`.
-
------
-
-## Additional Configuration Options
-
-  - **YAML Files:** All detectors have a config file in `configs/` (e.g., `CLIP-D.yaml`, `NPR.yaml`).
-  - **Config Options:**
-      - `global`: Dataset path, device, split file, threads, etc.
-      - `detector_args`: Model-specific arguments.
-      - `training`: List of training scenarios.
-      - `testing`: List of test scenarios.
-
------
-
-## References
-
-[1] D. Cozzolino, G. Poggi, R. Corvi, M. Nießner, and L. Verdoliva,
-“Raising the Bar of AI-generated Image Detection with CLIP,” in 2024
-IEEE/CVF Conference on Computer Vision and Pattern Recognition
-Workshops (CVPRW), pp. 4356–4366, June 2024. ISSN: 2160-7516.
-
-[2]C. Tan, H. Liu, Y. Zhao, S. Wei, G. Gu, P. Liu, and Y. Wei, “Rethinking the Up-Sampling Operations in CNN-Based Generative Network for
-Generalizable Deepfake Detection,” in 2024 IEEE/CVF Conference on
-Computer Vision and Pattern Recognition (CVPR), pp. 28130–28139,
-June 2024. ISSN: 2575-7075.
-
-[3] F. Laiti, B. Liberatori, T. De Min, and E. Ricci, “Conditioned Prompt-Optimization for Continual Deepfake Detection,” in Pattern Recognition (A. Antonacopoulos, S. Chaudhuri, R. Chellappa, C.L. Liu, S. Bhatacharya, and U. Pal, eds.), (Cham), pp. 64–79, Springer Nature Switzerland, 2025.
-
-[4] Dell'Anna, Stefano, Andrea Montibeller, and Giulia Boato. "TrueFake: A Real World Case Dataset of Last Generation Fake Images also Shared on Social Networks." arXiv preprint arXiv:2504.20658 (2025).
-
-[5]R. Corvi, D. Cozzolino, G. Zingarini, G. Poggi, K. Nagano, and L. Verdoliva, “On The Detection of Synthetic Images Generated by Diffusion
-Models,” in ICASSP 2023 - 2023 IEEE International Conference on
-Acoustics, Speech and Signal Processing (ICASSP), pp. 1–5, June 2023.
-ISSN: 2379-190X.
-
-[6] NVlabs, “Flickr faces hq dataset.” https://github.com/NVlabs/ffhq-dataset, n.d. Accessed: 2025-03-04
-
-[7] M. Iuliani, M. Fontani, and A. Piva, “A leak in prnu based source
-identification—questioning fingerprint uniqueness,” IEEE Access, vol. 9, pp. 52455–52463, 2021.
-
-## 2026 open methods: PGC, ForensicConcept, MDMF
-
-Three detectors first released within the year ending 15 October 2026 are available through the same launcher: [PGC](https://arxiv.org/abs/2605.21207) ([Apache-2.0 code](https://github.com/xiaoyu6868/PGC), [weights](https://huggingface.co/xiaoyuzhou68/PGC_ckpt)), [ForensicConcept CLIP codebook](https://arxiv.org/abs/2606.07034) ([Apache-2.0 code](https://github.com/EthanAdamm/FORENSICCONCEPT), [weights](https://huggingface.co/ethan225/ForensicConcept)), and [MDMF](https://arxiv.org/abs/2605.09296) ([MIT code and checkpoint](https://github.com/ZBox1005/MDMF)). Official source snapshots and license texts are under each detector's `upstream/` directory. PGC and ForensicConcept checkpoints are in separately licensed model repositories; the setup command records exact revisions and file hashes in ignored `weights-manifest.json` files.
-
-Use a fresh virtual environment. `requirements.txt` pins NumPy below 2 for compatible SciPy and scikit-learn binary builds. Install with `python -m pip install -r requirements.txt`, then fetch published weights and original backbones:
-
-```bash
-python support/setup_recent_weights.py all
-python support/json_compile.py "/path/to/DeepShield dataset" --output split.json
-```
-
-Set `global.dataset_path` in `configs/PGC.yaml`, `configs/ForensicConcept.yaml`, and `configs/MDMF.yaml` to the dataset root. The root must contain `PreSocial`, `Facebook`, `Telegram`, and/or `X` with `Real` and `Fake` subdirectories. `split.json` contains source IDs in `train`, `val`, and `test`; generate it before training. Existing split manifests without `val` need a validation split for MDMF. Paths containing spaces are supported.
-
-Train, test with a published checkpoint, and classify one image:
-
-```bash
-python launcher.py --detector PGC --phases train --weights_name my-run --device cpu --batch-size 2
-python launcher.py --detector PGC --phases test --weights_name pretrained --device auto
-python launcher.py --detect --detector PGC --image "/path/with spaces/image.jpg" --weights pretrained --device cpu
-```
-
-Replace `PGC` with `ForensicConcept` or `MDMF`. Use `--device cuda:0` or `--device mps` when available. `--dry-run` prints commands without running them. CPU inference is supported; training DINOv2-Large and CLIP-L/14 on a CPU can take many hours or days. For a small training trial, run a detector's `train.py` directly with `--epochs 1 --max_steps 1` and the same data arguments shown by `launcher.py --dry-run`.
-
-MDMF requires a real-image reference bank and a validation-derived decision threshold. Its published checkpoint contains neither. Prepare both once from **train-split real images** and the labeled validation split before test, demo, or single-image inference:
-
-```bash
+export DATASET=/absolute/path/to/DeepShield
 python detectors/MDMF/prepare.py --name pretrained --device cpu \
-  --data_root "/path/to/DeepShield dataset" --split_file split.json \
+  --data_root "$DATASET" --split_file split.json \
   --data_keys 'gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre'
 ```
 
-MDMF's `raw_score` is MMD², where larger values mean more likely fake. The `fake_score` is a sigmoid mapping using the stored validation threshold and scale. PGC and ForensicConcept report sigmoid fake scores from their released fake logits. All three write `results.csv` under `detectors/<method>/results/<name>/<scenario>/` and single-image JSON under `detection_results/<method>/detect/` with `prediction`, `fake_score`, `raw_score`, and `elapsed_time`.
+(For the smoke set of step 5 use `--data_root "$SMOKE/dataset" --split_file "$SMOKE/split.json"`.)
 
-The library already contains a [Luisa Verdoliva group method](https://github.com/grip-unina/ClipBased-SyntheticImageDetection): `CLIP-D` implements *Raising the Bar of AI-generated Image Detection with CLIP*. We reviewed [B-Free](https://github.com/grip-unina/B-Free) and [QuAD](https://github.com/grip-unina/QuAD) for an additional group method. B-Free's first release predates 15 October 2025 and its official repository supplies inference only; QuAD calibrates across near-duplicate images rather than classifying one image independently. Both repositories limit use to informational and nonprofit purposes, so neither meets the open-license detector criteria used here.
+### 3.2 Evaluate on the labeled test set
+
+```bash
+export DATASET=/absolute/path/to/DeepShield
+export MODEL=NPR            # R50_TF | R50_nodown | CLIP-D | P2G | NPR | PGC | ForensicConcept | MDMF
+export DEVICE=auto          # auto | cpu | cuda:0   (P2G: cuda:0)
+
+python launcher.py --detector "$MODEL" --phases test \
+  --weights_name pretrained --device "$DEVICE"
+```
+
+This runs **every scenario listed under `testing:`** in `configs/$MODEL.yaml` (all generators × pre-social / Facebook / Telegram / X) on the `test` part of `split.json`. List the result files with:
+
+```bash
+find detectors/$MODEL/results/pretrained -name results.csv
+```
+
+Evaluate all detectors in a loop:
+
+```bash
+for m in R50_TF R50_nodown CLIP-D NPR PGC ForensicConcept MDMF; do
+  python launcher.py --detector "$m" --phases test --weights_name pretrained --device auto || break
+done
+```
+
+Add `--dry-run` to print the underlying commands without running them; `--batch-size N` lowers memory use for PGC / ForensicConcept / MDMF.
+
+### 3.3 Classify a single image
+
+```bash
+python launcher.py --detect --detector "$MODEL" --image /path/to/image.jpg \
+  --weights pretrained --device "$DEVICE" --output detection_results/$MODEL/out.json
+```
+
+The JSON contains `prediction`, `fake_score` (near 1 = likely fake) and `elapsed_time`. MDMF additionally reports `raw_score` (MMD², larger = more likely fake).
+
+### 3.4 Demo on sample images
+
+Download the [demo images](https://drive.google.com/file/d/134Bw8l9tEC7oZJpTAeMO80QRqgdJfJS9/view?usp=sharing) and unzip them at the repository root (`unzip <archive>.zip -d .`, which fills `demo_images/`), then:
+
+```bash
+python launcher.py --demo --demo-detector all     # or a single detector name
+python launcher.py --demo --demo-detector all --device cpu   # force CPU
+```
+
+Detectors without installed pretrained weights (and P2G when not on CUDA) are skipped in `all` mode. Results: `detectors/<MODEL>/results/*/all-all/results.csv` or `.../data/all:all/` (`find detectors/*/results -path '*all*' -name results.csv`). Demo images are full resolution and are processed one at a time by the older detectors, so on CPU R50_TF and R50_nodown take about 10–30 minutes each (the others take about a minute); a GPU is much faster.
+
+## 4. Train your own model
+
+Pick a **new run name** (`--weights_name`); use the same name for testing and single-image detection. Training uses the `training:` entry of the config (default: StyleGAN2 + StableDiffusionXL fakes, FFHQ + FORLAB reals, pre-social).
+
+```bash
+export MODEL=PGC RUN=my_PGC DEVICE=auto
+
+python launcher.py --detector "$MODEL" --phases train --weights_name "$RUN" --device "$DEVICE"
+test -s detectors/$MODEL/checkpoint/$RUN/weights/best.pt && echo "checkpoint OK"
+
+python launcher.py --detector "$MODEL" --phases test  --weights_name "$RUN" --device "$DEVICE"
+python launcher.py --detect --detector "$MODEL" --image /path/to/image.jpg \
+  --weights "$RUN" --device "$DEVICE" --output detection_results/$MODEL/my.json
+```
+
+- `--phases both` (default) trains and then tests.
+- PGC, ForensicConcept and MDMF need their backbones (`setup_recent_weights.py`) even for training; MDMF builds its reference bank and threshold automatically. Training these on CPU can take many hours.
+- P2G requires a CUDA GPU (`--device cuda:0`).
+- For R50_TF, R50_nodown, CLIP-D, NPR and P2G the batch size and epochs come from the YAML `detector_args`.
+
+## 5. Smoke test on a tiny CPU dataset
+
+A functional check (not an accuracy benchmark) using an 80-image symlinked sample (32 train / 32 val / 16 test). It writes its **own** split and configs, so your main `configs/` and `split.json` stay untouched.
+
+```bash
+export SMOKE=/absolute/path/to/new-empty-dir      # must not exist yet
+python support/create_cpu_smoke.py "$DATASET" "$SMOKE"   # skip if you already have a smoke folder
+export IMAGE="$(find "$SMOKE/dataset/PreSocial/Fake/StableDiffusionXL" -type l -print -quit)"
+
+for model in R50_TF R50_nodown CLIP-D NPR PGC ForensicConcept MDMF; do
+  run="smoke_$model"
+  python launcher.py --detector "$model" --phases train --config-dir "$SMOKE/configs" \
+    --weights_name "$run" --device cpu --batch-size 2 || break
+  test -s "detectors/$model/checkpoint/$run/weights/best.pt" || { echo "missing ckpt: $model"; break; }
+  python launcher.py --detector "$model" --phases test --config-dir "$SMOKE/configs" \
+    --weights_name "$run" --device cpu --batch-size 2 || break
+  python launcher.py --detect --detector "$model" --image "$IMAGE" --weights "$run" \
+    --device cpu --output "detection_results/$model/smoke.json" || break
+done
+```
+
+For P2G run the same three commands on a GPU with `--device cuda:0`. The original DeepShield files must stay in place because the sample uses symlinks.
+
+To test the **pretrained** weights on the smoke set instead, use the commands of step 3 with `--config-dir "$SMOKE/configs" --weights_name pretrained` (MDMF: run `prepare.py` with the smoke paths first, see 3.1).
+
+> P2G rewrites `detectors/P2G/configs/test.json` / `train.json` on every run. Discard those changes with `git checkout -- detectors/P2G/configs/` before committing.
+
+## 6. Configuration
+
+Each detector has `configs/<DETECTOR>.yaml`:
+
+| Section | Meaning |
+|---|---|
+| `global` | `dataset_path`, `split_file`, `device_override`, `num_threads`, `dry_run`, `only_list` |
+| `detector_args` | Model-specific arguments passed to `train.py` / `test.py` |
+| `training` | List of training scenarios (`data: <key>:<social>&...`) |
+| `testing` | List of test scenarios, all evaluated by `--phases test` |
+
+Launcher flags override the YAML: `--device`, `--batch-size`, `--config-dir`, `--weights_name`.
+
+## 7. Custom generators and new datasets
+
+**Different training generators.** Edit `training:` in the config:
+
+```yaml
+training:
+  - data: gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre
+```
+
+Keys are `<generator>:<social>` joined with `&`.
+
+Generator keys: `gan1` (StyleGAN), `gan2` (StyleGAN2), `gan3` (StyleGAN3), `sd15` (StableDiffusion1.5), `sd2` (StableDiffusion2), `sd3` (StableDiffusion3), `sdXL` (StableDiffusionXL), `flux` (FLUX.1), `realFFHQ` (FFHQ [6], real), `realFORLAB` (FORLAB [7], real).
+
+Social keys: `pre` (not shared on a social network), `fb` (Facebook), `tl` (Telegram), `tw` (X).
+
+The split does not need to be regenerated: it holds source IDs, not generator choices.
+
+**New dataset.** Use the same folder layout as DeepShield (`<Social>/{Real,Fake}/<generator>/...`, with `Social` in `PreSocial`, `Facebook`, `Telegram`, `X`), generate a split with `support/json_compile.py`, and set `dataset_path` / `split_file` in the configs.
+
+## 8. Outputs
+
+| What | Where |
+|---|---|
+| Checkpoints | `detectors/<MODEL>/checkpoint/<RUN>/weights/best.pt` |
+| Labeled test results | `results.csv` below `detectors/<MODEL>/results/<RUN>/` (one per scenario) |
+| Single-image results | the path given to `--output` |
+| Logs | `logs/` |
+
+Checkpoints, results, logs, and downloaded weights are git-ignored.
+
+## 9. Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Dataset directory not found` | `global.dataset_path` still `<PATH_TO_DATASET>` in that config |
+| `Model weights not found` | Wrong run name, or weights not at `checkpoint/<RUN>/weights/best.pt` (see 3.1) |
+| MDMF fails for `pretrained` | Run `detectors/MDMF/prepare.py` (3.1) |
+| P2G fails on CPU | P2G needs CUDA |
+| Out of memory | Lower `--batch-size` (PGC / ForensicConcept / MDMF) or `detector_args` batch size |
+| GPU 0 busy (shared machine) | Pick another GPU: `CUDA_VISIBLE_DEVICES=1 python launcher.py ... --device cuda:0` (P2G always uses `cuda:0`) |
+| NumPy / SciPy binary error | Keep NumPy < 2, as pinned in `requirements.txt` |
+| PGC / MDMF: `Missing key(s) in state_dict ... q_proj` | `transformers` ≥ 5 is installed; re-run `pip install -r requirements.txt` (pins `transformers<5`) |
+| No images found for `:tw` scenarios | Your copy names the X folder `Twitter/`; rename it (or `ln -s Twitter X`) inside every dataset root |
+
+## License
+
+Project code and documentation: [Apache-2.0](LICENSE); version in [VERSION](VERSION). Each detector keeps its own license (see `detectors/<MODEL>/LICENSE*` and `upstream/`). Downloaded weights and datasets are **not** covered by the root license and remain under their original terms.
+
+2026 detectors: PGC code Apache-2.0 ([code](https://github.com/xiaoyu6868/PGC), [weights](https://huggingface.co/xiaoyuzhou68/PGC_ckpt)); ForensicConcept code Apache-2.0 ([code](https://github.com/EthanAdamm/FORENSICCONCEPT), [weights](https://huggingface.co/ethan225/ForensicConcept)); MDMF MIT ([code and checkpoint](https://github.com/ZBox1005/MDMF)). PGC and ForensicConcept weights are in separately licensed repositories; exact revisions and hashes are recorded in the ignored `weights-manifest.json` files.
+
+Other methods considered: B-Free and QuAD (GRIP-UNINA) were reviewed but excluded because their licenses restrict use to informational and non-profit purposes; QuAD also calibrates across near-duplicate images instead of classifying one image.
+
+## References
+
+**Detectors (2023–2025)**
+
+[1] D. Cozzolino, G. Poggi, R. Corvi, M. Nießner, L. Verdoliva. "Raising the Bar of AI-generated Image Detection with CLIP." *CVPR Workshops (CVPRW)*, 2024, pp. 4356–4366. [Code](https://github.com/grip-unina/ClipBased-SyntheticImageDetection)
+
+[2] C. Tan, H. Liu, Y. Zhao, S. Wei, G. Gu, P. Liu, Y. Wei. "Rethinking the Up-Sampling Operations in CNN-based Generative Network for Generalizable Deepfake Detection." *CVPR*, 2024, pp. 28130–28139. [arXiv:2312.10461](https://arxiv.org/abs/2312.10461)
+
+[3] F. Laiti, B. Liberatori, T. De Min, E. Ricci. "Conditioned Prompt-Optimization for Continual Deepfake Detection." *ICPR 2024*, Lecture Notes in Computer Science, Springer, 2025, pp. 64–79. [arXiv:2407.21554](https://arxiv.org/abs/2407.21554)
+
+[4] S. Dell'Anna, A. Montibeller, G. Boato. "TrueFake: A Real World Case Dataset of Last Generation Fake Images also Shared on Social Networks." *IJCNN*, 2025. [arXiv:2504.20658](https://arxiv.org/abs/2504.20658)
+
+[5] R. Corvi, D. Cozzolino, G. Zingarini, G. Poggi, K. Nagano, L. Verdoliva. "On the Detection of Synthetic Images Generated by Diffusion Models." *ICASSP*, 2023. [Code](https://github.com/grip-unina/DMimageDetection)
+
+**Data**
+
+[6] NVlabs. "Flickr-Faces-HQ Dataset (FFHQ)." <https://github.com/NVlabs/ffhq-dataset>
+
+[7] M. Iuliani, M. Fontani, A. Piva. "A Leak in PRNU Based Source Identification — Questioning Fingerprint Uniqueness." *IEEE Access*, vol. 9, pp. 52455–52463, 2021.
+
+**Detectors (2026)**
+
+[8] X. Zhou, J. Fei, P. Yu, J. Xie, C. Cheng, Z. Xia. "PGC: Peak-Guided Calibration for Generalizable AI-Generated Image Detection." arXiv:2605.21207, 2026. [Paper](https://arxiv.org/abs/2605.21207)
+
+[9] M. Zhou, Z. Zhou, K. Sun, Y. Luo, J. Ji, X. Sun, R. Ji. "ForensicConcept: Transferable Forensic Concepts for AIGI Detection." arXiv:2606.07034, 2026. [Paper](https://arxiv.org/abs/2606.07034)
+
+[10] B. Zhang, J. Zhu, Q. Wang, J. Liu, R. Tang. "Micro-Defects Expose Macro-Fakes: Detecting AI-Generated Images via Local Distributional Shifts." arXiv:2605.09296, 2026. [Paper](https://arxiv.org/abs/2605.09296)

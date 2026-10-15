@@ -8,7 +8,7 @@ torchvision>=0.22,<0.24
 # accelerate
 # diffusers
 # timm
-transformers
+transformers>=4.44,<5   # published DINOv2 checkpoints use 4.x layer names
 huggingface_hub
 
 # ML/DL Helpers

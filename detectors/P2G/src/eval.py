@@ -39,7 +39,7 @@ def parse_dataset(data_keys):
         'pre':  ['PreSocial'],
         'fb':   ['Facebook'],
         'tl':   ['Telegram'],
-        'tw':   ['Twitter'],
+        'tw':   ['X'],
     }
 
     mod_keys['all'] = [mod_keys[key][0] for key in mod_keys.keys()]
@@ -321,7 +321,7 @@ def accuracy_binary(y_pred, y_true, increment=2):
 
 
 def prepare_model(args):
-    checkpoint = torch.load(f'./checkpoint/{args["run_name"]}/weights/best.pt', map_location=args["device"])
+    checkpoint = torch.load(f'./checkpoint/{args["run_name"]}/weights/best.pt', map_location=args["device"], weights_only=False)
     # update config args
     args["K"] = checkpoint["K"]
     args["topk_classes"] = checkpoint["topk_classes"]

@@ -16,7 +16,8 @@ class _BaseWarmupScheduler(_LRScheduler):
     ):
         self.successor = successor
         self.warmup_epoch = warmup_epoch
-        super().__init__(optimizer, last_epoch, verbose)
+        # torch >= 2.7 no longer accepts the deprecated `verbose` argument
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self):
         raise NotImplementedError

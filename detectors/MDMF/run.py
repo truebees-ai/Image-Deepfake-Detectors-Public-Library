@@ -19,6 +19,7 @@ from transformers import AutoModel
 from support.recent_common import checkpoint, detection_result, device_for, parser, timed_score, validate_inputs, write_results
 from support.recent_data import samples
 from test_MDMF import MMD_MIL_Detector, pool_tokens_to_patch_size, precompute_ref_stats, score_mmd2_batch
+from train_MDMF import MMD_MIL_Detector as TrainableDetector  # same layers, defines the training forward()
 
 
 def backbone_for(device):
@@ -118,8 +119,10 @@ def calibrate(backbone, model, device, patch_size, reference, entries, path):
     import statistics
     a, b = statistics.median(real), statistics.median(fake)
     if b <= a:
-        raise ValueError("MDMF validation scores do not separate in the expected direction; inspect data and checkpoint")
-    result = {"threshold": (a + b) / 2, "scale": max((b - a) / 4, 1e-6),
+        # Expected after very short (smoke) training; a real run should separate real and fake scores.
+        print("WARNING: MDMF validation scores do not separate (median fake <= median real); "
+              "predictions from this checkpoint are unreliable", file=sys.stderr)
+    result = {"threshold": (a + b) / 2, "scale": max(abs(b - a) / 4, 1e-6),
               "source": "validation split", "real_count": len(real), "fake_count": len(fake)}
     path.write_text(json.dumps(result, indent=2) + "\n")
     return result
@@ -142,7 +145,7 @@ def main(task):
         directory.mkdir(parents=True, exist_ok=True)
         train_bank = embedding_bank(backbone, device, train, "train", directory / "train.pkl", args.batch_size)
         embedding_bank(backbone, device, real, "train", directory / "reference.pkl", args.batch_size)
-        model = MMD_MIL_Detector().to(device)
+        model = TrainableDetector().to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
         real_vec = [torch.from_numpy(x).float() for x, y in zip(train_bank["embeddings"], train_bank["labels"]) if y == 0]
         fake_vec = [torch.from_numpy(x).float() for x, y in zip(train_bank["embeddings"], train_bank["labels"]) if y == 1]

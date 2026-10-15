@@ -163,7 +163,7 @@ def create_dataloader(settings, split=None):
     
     elif split == "test":
         settings.split = 'test'
-        settings.batch_size = settings.batch_size//8
+        settings.batch_size = max(1, settings.batch_size//8)
         is_train=False
     
     else:

@@ -57,7 +57,7 @@ def create_dataloader(opt, split=None):
     
     elif split == "test":
         opt.split = 'test'
-        opt.batch_size = 2
+        opt.batch_size = min(opt.batch_size, 2)
         is_train=False
     
     else:

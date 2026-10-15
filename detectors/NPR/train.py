@@ -78,8 +78,7 @@ if __name__ == '__main__':
         acc, ap = validate(model.model, val_loader)[:2]
         print("(Val @ epoch {}) acc: {}; ap: {}".format(epoch, acc, ap))
         model.train()
-        if epoch == 0:
-            model.save_networks('best')
-        elif acc >= model.best_acc:
+        if epoch == 0 or acc >= model.best_acc:
+            model.best_acc = acc
             model.save_networks('best')
     

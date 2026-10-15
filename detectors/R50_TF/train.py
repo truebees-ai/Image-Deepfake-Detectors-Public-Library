@@ -93,7 +93,7 @@ if __name__ == "__main__":
     model.to(device)
     os.makedirs(f'./checkpoint/{settings.name}/weights/', exist_ok=True)
     
-    with open(f'./checkpoint/settings.txt', 'w') as f:
+    with open(f'./checkpoint/{settings.name}/settings.txt', 'w') as f:
         f.write(str(settings))
 
     train_dataloader = create_dataloader(settings, split='train')

@@ -14,7 +14,7 @@ def validate(model, data_loader):
         with tqdm(data_loader, unit='batch', mininterval=0.5) as tbatch:
             tbatch.set_description(f'Validation')
             for (img, label, _) in tbatch:
-                in_tens = img.cuda()
+                in_tens = img.to(next(model.parameters()).device)
                 y_pred.extend(model(in_tens).sigmoid().flatten().tolist())
                 y_true.extend(label.flatten().tolist())
 

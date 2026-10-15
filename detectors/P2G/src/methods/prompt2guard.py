@@ -618,7 +618,7 @@ class Prompt2Guard:
         
         # --- Added: Load best model weights after training ---
         logging.info(f"Loading best weights from {save_path}")
-        checkpoint = torch.load(save_path)
+        checkpoint = torch.load(save_path, weights_only=False)
         # Load the weights back into the network
         # Ensure network is on the correct device
         self.network.to(self.device) 

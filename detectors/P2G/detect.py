@@ -69,7 +69,7 @@ def main():
         return
     # Load checkpoint early so we can populate config/args expected by SliNet
     try:
-        checkpoint = torch.load(model_path, map_location=device)
+        checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     except Exception as e:
         print(f"Error loading checkpoint '{model_path}': {e}")
         return

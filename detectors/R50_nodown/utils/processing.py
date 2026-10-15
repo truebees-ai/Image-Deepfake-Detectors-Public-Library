@@ -42,10 +42,28 @@ def make_processing(opt):
     if opt.task == 'test' and 'realFORLAB:tw' in opt.data_keys:
         transforms_list.append(Tv2.CenterCrop(1200)) 
     if opt.task == 'test' and 'realFORLAB:tl' in opt.data_keys:
-        transforms_list.append(Tv2.CenterCrop(800)) 
+        transforms_list.append(Tv2.CenterCrop(800))
+    if opt.task == 'test' and opt.data_keys.startswith('all:'):
+        # Mixed-source keys (demo) get no per-source crop; cap large camera images so
+        # the no-downsampling ResNet does not need tens of GB of activations.
+        transforms_list.append(CenterCropAtMost(1024))
     transforms_list.append(make_normalize(opt))  # make normalization
 
     return Tv2.Compose(transforms_list)
+
+
+class CenterCropAtMost:
+    """Center-crop each side to at most `size` pixels, never padding smaller images."""
+
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, img):
+        width, height = img.size
+        return Tv2.functional.center_crop(img, [min(height, self.size), min(width, self.size)])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(size={self.size})"
 
 
 def add_processing_arguments(parser):
