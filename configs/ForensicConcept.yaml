@@ -1,0 +1,15 @@
+global:
+  dataset_path: <PATH_TO_DATASET>
+  device_override: auto
+  split_file: ./split.json
+  num_threads: 0
+  dry_run: false
+  only_list: false
+detector_args: []
+training:
+  - data: gan2:pre&sdXL:pre&realFFHQ:pre&realFORLAB:pre
+testing:
+  - all:pre
+  - all:fb
+  - all:tl
+  - all:tw

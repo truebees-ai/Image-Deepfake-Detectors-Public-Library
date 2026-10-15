@@ -3,27 +3,8 @@ import json
 import sys
 import yaml
 import subprocess
+import shlex
 from datetime import datetime
-
-def get_gpus():
-    from numpy import argwhere, asarray, diff
-    import re
-    smi = os.popen('nvidia-smi').readlines()
-    div = re.compile('[+]-{3,}[+]|[|]={3,}[|]')
-    dividers = argwhere([div.match(line) != None for line in smi])[-2:, 0]
-    processes = [line for line in smi[dividers[0]+1:dividers[1]] if ' C ' in line]
-    free = list(set([process.split()[1] for process in processes]) ^ set([str(0), str(1)]))
-
-    udiv = re.compile('[|]={3,}[+]={3,}[+]={3,}[|]')
-    ldiv = re.compile('[+]-{3,}[+]-{3,}[+]-{3,}[+]')
-    divider_up = argwhere([udiv.match(line) != None for line in smi])[0,0]
-    divider_down = argwhere([ldiv.match(line) != None for line in smi])[-1, 0]
-
-    gpus = [line for line in smi[divider_up+1:divider_down] if '%' in line and 'MiB' in line]
-    gpus = [gpu.split('|')[2].replace(' ', '').replace('MiB', '').split('/') for gpu in gpus]
-    memory = diff(asarray(gpus).astype(int), axis=1).squeeze()
-
-    return free, memory
 
 def load_config(config_path):
     """Load configuration from YAML file."""
@@ -47,13 +28,10 @@ def run_detect(args):
     global_config = config.get('global', {})
     
     # Set device
-    device = global_config.get('device_override')
-    if not device or device == "null":
-        _, memory = get_gpus()
-        if len(memory) > 0:
-            device = f"cuda:{memory.argmax()}"
-        else:
-            device = "cpu"
+    device = args.device or global_config.get('device_override') or 'auto'
+    if device in ('null', '', 'auto') and not args.dry_run:
+        import torch
+        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
             
     # Set up output path for results
     if not args.output:
@@ -71,23 +49,25 @@ def run_detect(args):
     if not os.path.exists(detect_script):
         raise FileNotFoundError(f"Detector {args.detector} does not support single image detection")
     
-    cmd_args = [
-        sys.executable,
-        detect_script,
-        f'--image "{args.image}"',
-        f'--device {device}',
-        f'--output "{args.output}"'
-    ]
+    cmd_args = [sys.executable, detect_script, '--image', os.path.abspath(args.image),
+                '--device', device, '--output', os.path.abspath(args.output)]
     
     # Add model path if specified
     if args.weights:
-        cmd_args.append(f'--model "{args.weights}"')
+        cmd_args.extend(['--model', args.weights])
+    if args.detector in ('PGC', 'ForensicConcept', 'MDMF') and args.batch_size:
+        cmd_args.extend(['--batch_size', str(args.batch_size)])
     
-    cmd = ' '.join(cmd_args)
+    cmd = shlex.join(cmd_args)
     print(f"Running detection with {args.detector}...")
     
-    if not args.dry_run:
-        subprocess.run(cmd, shell=True)#, check=True)
+    if args.dry_run:
+        print(cmd)
+    else:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+        subprocess.run(cmd_args, check=True)
+        if not os.path.isfile(args.output):
+            raise RuntimeError(f"Detector completed without writing a result: {args.output}")
         
         # Print results if available
         if os.path.exists(args.output):
@@ -95,6 +75,10 @@ def run_detect(args):
                 result = json.load(f)
             print("\nDetection Results:")
             print(f"Prediction: {result['prediction']}")
-            print(f"Confidence: {result['confidence']:.4f}")
+            if 'fake_score' not in result:
+                result['fake_score'] = result['confidence']
+                with open(args.output, 'w') as handle:
+                    json.dump(result, handle, indent=2)
+            print(f"Fake score: {result['fake_score']:.4f}")
             print(f"Time: {result['elapsed_time']:.3f}s")
             print(f"\nFull results saved to: {args.output}")

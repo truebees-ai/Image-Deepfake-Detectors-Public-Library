@@ -1,5 +1,11 @@
 *.pth
 *.pt
+*.pkl
+__pycache__/
+*.pyc
+detectors/*/checkpoint/
+detectors/ForensicConcept/upstream/codebooks/*.npy
+detectors/*/results/
 detectors/*/results/*
 venv_OS_library*/
 copy_images.sh

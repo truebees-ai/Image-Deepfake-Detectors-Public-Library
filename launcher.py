@@ -6,6 +6,11 @@ import argparse
 import yaml
 import glob
 import shutil
+import sys
+import shlex
+from pathlib import Path
+
+METHODS = ['R50_TF', 'R50_nodown', 'CLIP-D', 'P2G', 'NPR', 'PGC', 'ForensicConcept', 'MDMF']
 
 
 def load_config(config_path):
@@ -13,27 +18,6 @@ def load_config(config_path):
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     return config
-
-# smi vampire function, busy waiting for a free-enough GPU, use min_vram to set the threshold
-def get_gpus():
-    from numpy import argwhere, asarray, diff
-    import re
-    smi = os.popen('nvidia-smi').readlines()
-    div = re.compile('[+]-{3,}[+]|[|]={3,}[|]')
-    dividers = argwhere([div.match(line) != None for line in smi])[-2:, 0]
-    processes = [line for line in smi[dividers[0]+1:dividers[1]] if ' C ' in line]
-    free = list(set([process.split()[1] for process in processes]) ^ set([str(0), str(1)]))
-
-    udiv = re.compile('[|]={3,}[+]={3,}[+]={3,}[|]')
-    ldiv = re.compile('[+]-{3,}[+]-{3,}[+]-{3,}[+]')
-    divider_up = argwhere([udiv.match(line) != None for line in smi])[0,0]
-    divider_down = argwhere([ldiv.match(line) != None for line in smi])[-1, 0]
-
-    gpus = [line for line in smi[divider_up+1:divider_down] if '%' in line and 'MiB' in line]
-    gpus = [gpu.split('|')[2].replace(' ', '').replace('MiB', '').split('/') for gpu in gpus]
-    memory = diff(asarray(gpus).astype(int), axis=1).squeeze()
-
-    return free, memory
 
 def autotest(train_list, data_list, detector_name, checkpoint_name):
     """Generate task list from training and testing configurations."""
@@ -128,11 +112,11 @@ def run_demo(args):
         return dst_weight
 
     
-    device = f"cuda:0" if torch.cuda.is_available() else "cpu"
+    device = args.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
     name = 'demo'
 
     detectors_root = os.path.join(project_root, 'detectors')
-    all_methods = ['R50_nodown', 'CLIP-D', 'R50_TF', 'P2G', 'NPR']
+    all_methods = METHODS
     methods = all_methods if args.demo_detector == 'all' else [args.demo_detector]
 
     os.makedirs(os.path.join(project_root, 'logs'), exist_ok=True)
@@ -142,50 +126,46 @@ def run_demo(args):
         if not os.path.isdir(det_dir):
             continue
 
+        recent = method in ('PGC', 'ForensicConcept', 'MDMF')
+        run_name = args.weights_name or 'pretrained'
         preferred_weights = args.weights_name or './checkpoint/pretrained/weights/best.pt'
-        best_path = prepare_best_checkpoint(det_dir, preferred_weights)
-        if best_path is None:
-            print(f"[demo] Skipping {method}: no pretrained weights found under checkpoint/pretrained/weights/")
+        best_path = (os.path.join(det_dir, 'checkpoint', run_name, 'weights', 'best.pt')
+                     if recent else prepare_best_checkpoint(det_dir, preferred_weights))
+        if best_path is None or not os.path.isfile(best_path):
+            message = f"[demo] No weights for {method}: {best_path or 'checkpoint/pretrained/weights/best.pt'}"
+            if args.demo_detector != 'all':
+                raise FileNotFoundError(message)
+            print(f"{message}; skipping")
             continue
 
         config_path = os.path.join(args.config_dir, f'{method}.yaml')
         config = load_config(config_path) if os.path.exists(config_path) else {}
         detector_args = config.get('detector_args', [])
-        testing_keys = config.get('testing', []) or ['all:all']
+        testing_keys = ['all:all']
         global_cfg = config.get('global', {})
         num_threads = global_cfg.get('num_threads', 8)
 
         for data_keys in testing_keys:
-            args_list = [
-                f'--name "{name}"',
-                f'--task test',
-                f'--device {device}',
-                f'--split_file {split_demo_file}',
-                f'--data_root {demo_root}',
-                f'--data_keys "{data_keys}"',
-                f'--num_threads {num_threads}',
-            ] + detector_args
-
-            cmd_args = ' '.join(args_list)
+            args_list = ['--name', run_name if recent else name, '--task', 'test',
+                         '--device', device, '--split_file', split_demo_file,
+                         '--data_root', demo_root, '--data_keys', data_keys,
+                         '--num_threads', str(num_threads), *detector_args]
+            if recent and args.batch_size:
+                args_list.extend(['--batch_size', str(args.batch_size)])
             log_file = os.path.join(project_root, 'logs', f'demo_{method}_{data_keys.replace(":","-")}.log')
             with open(log_file, 'w') as f:
-                cwd = os.getcwd()
-                os.chdir(det_dir)
-                try:
-                    print(f"[demo] Running {method} test with args: {cmd_args}")
-                    runner = 'test.py'
-                    subprocess.run(f'python -u {runner} {cmd_args}', shell=True)#, stdout=f, stderr=f)
-                finally:
-                    os.chdir(cwd)            
-        shutil.rmtree(os.path.join(det_dir, 'checkpoint', 'demo'))
+                print(f"[demo] Running {method} test with args: {shlex.join(args_list)}")
+                subprocess.run([sys.executable, '-u', 'test.py', *args_list], cwd=det_dir, check=True)
+        if not recent:
+            shutil.rmtree(os.path.join(det_dir, 'checkpoint', 'demo'))
 
-    print('[demo] Completed. Results saved under detectors/<method>/results/demo/<scenario>/results.csv')
+    print('[demo] Completed. Results saved under detectors/<method>/results/<run>/all-all/results.csv')
 
 def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Launcher for deepfake detector training and testing')
     parser.add_argument('--detector', type=str, required=False,
-                        choices=['R50_TF', 'R50_nodown', 'CLIP-D', 'P2G', 'NPR'],
+                        choices=METHODS,
                         help='Detector to use')
     parser.add_argument('--phases', type=str, default='both',
                         choices=['train', 'test', 'both'],
@@ -195,7 +175,9 @@ def main():
     parser.add_argument('--weights_name', type=str, default=None, 
                         help='Name of the weights directory')
     parser.add_argument('--demo', action='store_true', help='Run demo on demo_images across detectors')
-    parser.add_argument('--demo-detector', type=str, default='all', choices=['all', 'R50_TF', 'R50_nodown', 'CLIP-D', 'P2G', 'NPR'], help='Which detector to demo (default: all)')
+    parser.add_argument('--demo-detector', type=str, default='all', choices=['all', *METHODS], help='Which detector to demo (default: all)')
+    parser.add_argument('--device', default=None, help='auto, cpu, cuda:N or mps; overrides YAML device_override')
+    parser.add_argument('--batch-size', type=int, default=None, help='Batch size for recent detectors')
     
     # Add detect mode arguments
     detect_group = parser.add_argument_group('detect', 'Single image detection options')
@@ -231,19 +213,17 @@ def main():
     # Extract configuration values
     global_config = config.get('global', {})
     dataset_path = global_config.get('dataset_path')
-    device_override = global_config.get('device_override')  # Can be None
+    device_override = args.device or global_config.get('device_override') or 'auto'
     if args.weights_name is not None:
         global_config['name'] = args.weights_name
     else:
         global_config['name'] = config.get('training', [])[0]['data']
     model_name = global_config.get('name')
-    # Handle string "null" as None
-    if device_override == "null" or device_override == "":
-        device_override = None
-    min_vram = global_config.get('min_vram', 16000)
+    if device_override in ('null', ''):
+        device_override = 'auto'
     split_file = os.path.abspath(global_config.get('split_file', 'split.json'))
     num_threads = global_config.get('num_threads', 8)
-    dry_run = global_config.get('dry_run', False)
+    dry_run = args.dry_run or global_config.get('dry_run', False)
     only_list = global_config.get('only_list', False)
     phases = parse_phases(args.phases)
     
@@ -251,7 +231,8 @@ def main():
     training_configs = config.get('training', [])
     test_list = config.get('testing', [])
     
-    os.makedirs('logs', exist_ok=True)
+    if not dry_run:
+        os.makedirs('logs', exist_ok=True)
     
     # Generate tasks
     tasks = []
@@ -272,54 +253,43 @@ def main():
         
         cmd_args = []
         
-        if task['type'] == 'train':
-            cmd_args.append(f'--name "{model_name}"')#{task["details"]["model"]}"')
-        else:
-            cmd_args.append(f'--name "{task["details"]["model"]}"')
+        cmd_args.extend(['--name', str(model_name if task['type'] == 'train' else task['details']['model'])])
         
-        cmd_args.append(f'--split_file {split_file}')
-        cmd_args.append(f'--task {task["type"]}')
-        cmd_args.append(f'--num_threads {num_threads}')
-        cmd_args.append(f'--data_keys "{task["details"]["data"]}"')
-        cmd_args.append(f'--data_root {dataset_path}')
+        cmd_args.extend(['--split_file', split_file, '--task', task['type'],
+                         '--num_threads', str(num_threads), '--data_keys', task['details']['data'],
+                         '--data_root', str(dataset_path)])
         
-        device = None
-        if device_override is not None:
-            device = device_override
-        else:
-            if not dry_run:
-                print('Waiting for GPU')
-                while device is None:
-                    free, memory = get_gpus()
-                    if len(free):
-                        device = "cuda:" + free[0]
-                    elif max(memory) > min_vram:
-                        device = "cuda:" + str([i for i, mem in enumerate(memory) if mem == max(memory)][0])
-                    time.sleep(1)
-                print('GPU found')
-        
-        cmd_args.append(f'--device {device}')
+        device = device_override
+        if device == 'auto' and not dry_run:
+            import torch
+            device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        cmd_args.extend(['--device', device])
+        if args.detector in ('PGC', 'ForensicConcept', 'MDMF') and args.batch_size:
+            cmd_args.extend(['--batch_size', str(args.batch_size)])
         
         # Add detector-specific arguments
-        for arg in detector_args:
-            cmd_args.append(arg)
+        cmd_args.extend(detector_args)
         
-        cmd_args_str = ' '.join(cmd_args)
+        cmd_args_str = shlex.join(cmd_args)
         
         # Call train.py or test.py
-        if not dry_run:
+        if dry_run:
+            print(shlex.join([sys.executable, '-u', f'{task["type"]}.py', *cmd_args]))
+        else:
+            if not Path(dataset_path).is_dir():
+                raise FileNotFoundError(f'Dataset directory not found: {dataset_path}')
+            if not Path(split_file).is_file():
+                raise FileNotFoundError(f'Split file not found: {split_file}')
             #log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{task["details"]["model"]}_{task["details"]["data"]}.log'
             log_file = f'logs/{task["type"]}_{task["details"]["detector"]}_{model_name}_{task["details"]["data"]}.log'
             with open(log_file, 'w') as f:
-                cwd = os.getcwd()
-                os.chdir(f'./detectors/{task["details"]["detector"]}')
-                
                 start_time = time.time()
                 
                 runner = f'{task["type"]}.py'
                 print(f'Call to {runner} with: {cmd_args_str}')
                 
-                subprocess.run(f'python -u {runner} {cmd_args_str}', shell=True)#, stdout=f, stderr=f)
+                subprocess.run([sys.executable, '-u', runner, *cmd_args],
+                               cwd=os.path.join('detectors', task['details']['detector']), check=True)
                 
                 end_time = time.time()
                 print(f'Execution time: {end_time-start_time:.2f} seconds')
@@ -327,7 +297,6 @@ def main():
                 print('#'*80)
                 print('#'*80)
                 
-                os.chdir(cwd)
 
 
 if __name__ == '__main__':
